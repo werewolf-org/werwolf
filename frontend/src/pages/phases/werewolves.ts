@@ -2,7 +2,6 @@ import type { View } from '../../router';
 import werewolvesHtml from './werewolves.html?raw';
 import { getState } from '../../store';
 import { socketService } from '../../socket.service';
-import { Role } from '@shared/roles.js';
 
 export class WerewolvesPhase implements View {
     private container: HTMLElement | null = null;

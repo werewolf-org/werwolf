@@ -15,6 +15,7 @@ export class SeerPhase implements View {
 
         // Subscribe to reveal state changes
         subscribeSelector(s => s.seerReveal, (reveal) => {
+            console.log(reveal);
             this.updateView();
         });
 

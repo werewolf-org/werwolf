@@ -1,6 +1,6 @@
 import type { View } from '../../router';
 import dayHtml from './day.html?raw';
-import { getState, setState, subscribeSelector } from '../../store';
+import { getState, subscribeSelector } from '../../store';
 import { socketService } from '../../socket.service';
 
 export class DayPhase implements View {

@@ -1,6 +1,5 @@
 import { GamePage } from './pages/game';
 import { StartPage } from './pages/start';
-import { setState } from './store';
 
 export interface View {
   mount: (container: HTMLElement) => void;

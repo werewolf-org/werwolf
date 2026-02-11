@@ -1,6 +1,6 @@
 import type { View } from '../../router';
 import nightHtml from './night.html?raw';
-import { subscribeSelector, getState, setState } from '../../store';
+import { subscribeSelector, getState } from '../../store';
 import { Role, ROLES } from '@shared/roles.js';
 import { WerewolvesPhase } from './werewolves';
 import { SeerPhase } from './seer';
