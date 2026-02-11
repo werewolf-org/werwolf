@@ -22,10 +22,6 @@ export class NightPhase implements View {
             this.updateNightView();
         })
 
-        subscribeSelector(s => s.seerReveal, () => {
-            this.updateNightView();
-        })
-
         // Initial render
         this.updateNightView();
     }
@@ -34,7 +30,6 @@ export class NightPhase implements View {
         const state = getState();
         const activeRole = state.activeNightRole;
         const ownRole = state.role;
-        const seerReveal = state.seerReveal;
         
         const me = state.players.find(p => p.playerUUID === state.playerUUID);
         const isDead = me && !me.isAlive;
@@ -66,21 +61,19 @@ export class NightPhase implements View {
             return;
         }
 
-        // 2. Handle Seer Reveal (Highest Priority for the Seer)
-        // ... (rest of logic)
-        // - It's my turn (activeRole == myRole)
-        // - OR: I am the Seer AND I have a pending reveal to see (seerReveal != null)
-        const isMyTurn = (activeRole && activeRole === ownRole);
-        const isPendingSeerReveal = (seerReveal !== null && ownRole === Role.SEER);
+        // 2. Handle NULL/Error case
+        if (activeRole === null) {
+            if (errorView) errorView.style.display = 'block';
+            return;
+        }
 
-        if (isMyTurn || isPendingSeerReveal) {
+        // 3. Logic: Who gets to see the Action UI?
+        // It's my turn (activeRole == myRole)
+        const isMyTurn = (activeRole && activeRole === ownRole);
+
+        if (isMyTurn) {
             if (actionContainer) actionContainer.style.display = 'block';
-            
-            // Determine which role view to render
-            // If I am the Seer with a reveal, I force the Seer view, even if it's someone else's turn now.
-            const roleToRender = isPendingSeerReveal ? Role.SEER : (activeRole as Role);
-            
-            this.renderActionUI(roleToRender);
+            this.renderActionUI(activeRole);
         } else {
             if (sleepView) sleepView.style.display = 'block';
         }
