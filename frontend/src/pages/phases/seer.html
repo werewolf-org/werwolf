@@ -1,0 +1,44 @@
+<div class="seer-action-container">
+    
+    <!-- STATE 1: SELECTION -->
+    <div id="seer-selection-view">
+        <div class="pixel-card">
+            <h3>The Eye of Truth</h3>
+            <p class="fog-text">Select a player to reveal their true nature...</p>
+        </div>
+
+        <div class="player-selection-list">
+            <ul id="seer-target-list" class="pixel-list">
+                <!-- Players will be injected here -->
+            </ul>
+        </div>
+
+        <div class="manager-controls">
+            <button id="confirm-seer-target-btn" class="btn btn-primary full-width" disabled>
+                Reveal Role
+            </button>
+        </div>
+
+        <div id="seer-waiting-message" class="waiting-message" style="display: none;">
+            <p class="fog-text">Gazing into the soul...</p>
+        </div>
+    </div>
+
+    <!-- STATE 2: REVEAL (Initially Hidden) -->
+    <div id="seer-reveal-view" class="pixel-card" style="display: none; text-align: center;">
+        <h3>Vision Revealed</h3>
+        <p class="fog-text">The clouds part...</p>
+        
+        <div class="role-image-container" style="margin-top: 20px;">
+            <img id="reveal-role-image" src="" alt="Role" class="pixel-art-image">
+        </div>
+        
+        <h2 id="reveal-role-name" class="highlight-text" style="margin: 20px 0;">...</h2>
+        <p id="reveal-player-name" class="fog-text">...is the identity of...</p>
+        
+        <button id="dismiss-reveal-btn" class="btn btn-primary full-width" style="margin-top: 20px;">
+            I have seen enough.
+        </button>
+    </div>
+
+</div>

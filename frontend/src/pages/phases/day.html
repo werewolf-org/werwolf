@@ -1,0 +1,63 @@
+<div class="day-container">
+    
+    <!-- STATE 1: VOTING -->
+    <div id="day-voting-view">
+        <div class="pixel-card day-header">
+            <h2 class="day-title">It's Day</h2>
+            <p class="fog-text">The village wakes up. Who is the Werewolf?</p>
+        </div>
+
+        <!-- Voting UI -->
+        <div class="pixel-card">
+            <h3>Cast your Vote</h3>
+            <p class="fog-text">Select a player to lynch...</p>
+        </div>
+
+        <div class="player-selection-list">
+            <ul id="day-vote-list" class="pixel-list">
+                <!-- Players will be injected here -->
+            </ul>
+        </div>
+
+        <div class="manager-controls">
+            <button id="confirm-vote-btn" class="btn btn-danger full-width" disabled>
+                Vote to Lynch
+            </button>
+        </div>
+        
+        <div id="vote-confirmed-message" class="waiting-message" style="display: none;">
+            <p class="fog-text">Vote Cast. Waiting for others...</p>
+        </div>
+    </div>
+
+    <!-- STATE 2: RESULTS -->
+    <div id="day-result-view" style="display: none;">
+        <div class="pixel-card day-header">
+            <h2 class="day-title">Judgment</h2>
+            <p class="fog-text">The village has spoken...</p>
+        </div>
+
+        <div class="pixel-card" style="text-align: center;">
+            <h3 class="highlight-text" id="lynched-player-name">...</h3>
+            <p id="lynch-result-text" class="fog-text">...was sent to the gallows.</p>
+        </div>
+
+        <div class="pixel-card">
+            <h4>Votes Cast</h4>
+            <ul id="day-vote-breakdown" class="pixel-list" style="font-size: 0.9em;">
+                <!-- Vote breakdown injected here -->
+            </ul>
+        </div>
+
+        <div class="manager-controls">
+            <button id="ready-for-night-btn" class="btn btn-primary full-width">
+                Ready for Night
+            </button>
+        </div>
+
+        <div id="night-waiting-message" class="waiting-message" style="display: none;">
+            <p class="fog-text">Waiting for the sun to set...</p>
+        </div>
+    </div>
+
+</div>

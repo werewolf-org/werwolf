@@ -1,0 +1,32 @@
+<div class="night-container">
+    <div class="pixel-card night-header">
+        <h2 class="night-title">It's Night</h2>
+    </div>
+
+    <!-- Container for specific role actions (Seer, Werewolves, Witch, etc.) -->
+    <div id="night-action-container" class="night-action-view" style="display: none;">
+        <!-- Specific role UI will be injected here -->
+    </div>
+
+    <!-- Sleep / Waiting View -->
+    <div id="night-sleep-view" class="pixel-card sleep-card" style="display: none;">
+        <div class="moon-icon">🌙</div>
+        <h3>Go Back to Sleep!</h3>
+        <p class="fog-text" id="night-current-turn-display">Current Turn: ...</p>
+    </div>
+
+    <!-- Error / Null Active Role View -->
+    <div id="night-error-view" class="pixel-card error-card" style="display: none;">
+        <h3 class="highlight-text">Silence...</h3>
+        <p class="fog-text">The night is still, but something is wrong.</p>
+        <p style="font-size: 0.8rem; margin-top: 10px;">(Error: No active night role)</p>
+    </div>
+
+    <!-- Dead View -->
+    <div id="night-dead-view" class="pixel-card sleep-card" style="display: none;">
+        <div class="moon-icon" style="filter: grayscale(100%) brightness(0.7);">👻</div>
+        <h3>You are Dead</h3>
+        <p class="fog-text">The night holds no terrors for you anymore.<br>Rest in peace.</p>
+        <p class="fog-text" id="night-dead-turn-display" style="margin-top: 20px; font-size: 0.9em; opacity: 0.7;">Current Turn: ...</p>
+    </div>
+</div>

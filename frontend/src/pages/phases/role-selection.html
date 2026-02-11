@@ -1,0 +1,38 @@
+<div class="selection-container">
+    <!-- Admin UI -->
+    <div id="role-selection-admin-ui" style="display: none;">
+        <div class="pixel-card">
+            <h3>Setup Village</h3>
+            <p class="fog-text">Choose the souls that will inhabit this place...</p>
+            <div class="player-count-badge">
+                Total Players: <span id="total-player-count">0</span>
+            </div>
+            <div class="player-count-badge">
+                Selected: <span id="selected-role-count">0</span> / <span id="required-role-count">0</span>
+            </div>
+        </div>
+
+        <div class="roles-scroll-area">
+            <div id="roles-list" class="pixel-list">
+                <!-- Role counter widgets will be injected here -->
+            </div>
+        </div>
+
+        <div class="manager-controls">
+            <button id="confirm-roles-btn" class="btn btn-primary full-width" disabled>
+                Distribute Roles
+            </button>
+        </div>
+    </div>
+
+    <!-- Player Waiting UI -->
+    <div id="role-selection-waiting-ui" class="waiting-message" style="display: none;">
+        <div class="pixel-card">
+            <h3>The Ritual Begins</h3>
+            <p class="fog-text">The Game Master is currently selecting the game roles...</p>
+            <p style="font-size: 0.9em; margin-top: 20px; font-style: italic;">
+                "Who will be the prey, and who will be the predator?"
+            </p>
+        </div>
+    </div>
+</div>

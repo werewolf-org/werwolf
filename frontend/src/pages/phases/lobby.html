@@ -1,0 +1,28 @@
+<div class="lobby-container">
+    <div class="pixel-card lobby-id-card">
+        <h3>Game: <span id="lobby-game-id" class="highlight-text">...</span></h3>
+    </div>
+
+    <div class="pixel-card players-list-card">
+        <h4>Village Population (<span id="player-count">0</span>)</h4>
+        <ul id="lobby-players-list" class="pixel-list">
+            <!-- Players will be injected here -->
+        </ul>
+    </div>
+
+    <div class="pixel-card qr-card">
+        <h4>Invite Players</h4>
+        <div id="lobby-qr-code" class="qr-container">
+            <!-- QR Code will be rendered here -->
+        </div>
+        <p class="qr-link" id="lobby-game-link" style="font-size: 0.7em; overflow-wrap: break-word;"></p>
+    </div>
+
+    <div id="manager-controls" class="manager-controls" style="display: none;">
+        <button id="start-game-btn" class="btn btn-primary full-width">Close Joining (Select Characters)</button>
+    </div>
+
+    <div id="player-waiting-message" class="waiting-message" style="display: none;">
+        <p class="fog-text">Waiting for game master to start the game...</p>
+    </div>
+</div>

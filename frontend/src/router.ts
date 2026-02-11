@@ -1,0 +1,44 @@
+import { GamePage } from './pages/game';
+import { StartPage } from './pages/start';
+import { setState } from './store';
+
+export interface View {
+  mount: (container: HTMLElement) => void;
+}
+
+// Simple router to handle / and /#/game/:id
+let currentView: View | null = null;
+
+export const render = () => {
+  const hash = window.location.hash;
+  const app = document.getElementById('app');
+  if (!app) return;
+
+  app.innerHTML = ''; // Clear current content
+
+  // Route: Root / Start Page
+  if (!hash || hash === '' || hash === '#/') {
+    currentView = new StartPage();
+    currentView.mount(app);
+    return;
+  }
+
+  // Route: Game Page (e.g. #/game/ABCD)
+  const gameMatch = hash.match(/^#\/game\/([a-zA-Z0-9]+)$/);
+  if (gameMatch) {
+    const gameId = gameMatch[1];
+
+    // Instantiate the GamePage (Controller for phases)
+    currentView = new GamePage(gameId); 
+    currentView.mount(app);
+    
+    return;
+  }
+
+  // 404 - Redirect to home
+  window.location.hash = '/';
+};
+
+export const navigate = (path: string) => {
+  window.location.hash = path;
+};
