@@ -98,11 +98,7 @@ export const resolveNightActions = (game: Game) => {
     }
 
     // couple dying
-    dyingPlayerUUIDs.forEach((playerUUID) => {
-        const lovePartner = game.players.find((player) => player.playerUUID === playerUUID)?.lovePartner;
-        if(!lovePartner) return;
-        if(!dyingPlayerUUIDs.find((uuid)=>uuid === lovePartner)) dyingPlayerUUIDs.push(lovePartner);
-    });
+    dyingPlayerUUIDs.forEach((playerUUID) => checkCoupleDying(game, playerUUID));
 
     // TODO: edge case - what if the red lady sleeps at the love partner's place
 
@@ -116,6 +112,16 @@ export const resolveNightActions = (game: Game) => {
         isAlive: p.isAlive
     }));
     socketService.notifyPlayerUpdate(game.gameId, playerList);
+}
+
+export const checkCoupleDying = (game: Game, dyingUUID: string | null) => {
+    if(!dyingUUID) return;
+    const lovePartnerUUID = game.players.find((player) => player.playerUUID === dyingUUID)?.lovePartner;
+    if(!lovePartnerUUID) return;
+    const lovePartner = game.players.find((player) => player.playerUUID === lovePartnerUUID);
+    if(!lovePartner) throw new Error(`Player with ${lovePartnerUUID} does not exist, cannot be a love partner`);
+    lovePartner.isAlive = false;
+    return lovePartnerUUID;
 }
 
 export const WerewolfHandler = {

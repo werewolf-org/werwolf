@@ -5,6 +5,7 @@ import { Phase } from "@shared/models.js";
 import { v4 as uuidv4 } from 'uuid';
 import type { Server } from 'socket.io';
 import { socketService } from "../socket.service.js";
+import { checkCoupleDying } from "./role.handler.js";
 
 export class GameManager {
     private store = GameStore.getInstance();
@@ -301,7 +302,10 @@ export class GameManager {
         }
 
         const electedPlayer = alivePlayers.find((player) => player.playerUUID === electedPlayerUUID) ?? null;
-        if(electedPlayer) electedPlayer.isAlive = false;
+        if(electedPlayer) {
+            electedPlayer.isAlive = false;
+            checkCoupleDying(game, electedPlayer.playerUUID);
+        }
 
         // reset votes
         game.players.forEach((player) => player.voteTargetUUID = null);
