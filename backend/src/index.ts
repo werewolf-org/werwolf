@@ -59,32 +59,36 @@ io.on('connection', (socket) => {
 
   socket.on('startGame', handleErrors(({gameId}) => gameManager.startGame(gameId)));
 
+  // WERWOLF
   socket.on('werewolfVote', handleErrors(({gameId, targetUUID}) => gameManager.nightAction(gameId, socket.id, Role.WEREWOLF, WerewolfHandler.handleVote, targetUUID)));
   // after voting: show 'other werewolves still have to vote'
 
+  // SEER
   socket.on('seeRole', handleErrors(({gameId, revealUUID}) => gameManager.nightAction(gameId, socket.id, Role.SEER, SeerHandler.handleSeeingRole, revealUUID)));
-
   // for going to next role
   socket.on('seerConfirmed', handleErrors(({gameId}) => gameManager.nightAction(gameId, socket.id, Role.SEER, SeerHandler.handleConfirm)));
 
+  // CUPID
   socket.on('makeLove', handleErrors(({gameId, firstPlayerUUID, secondPlayerUUID}) => gameManager.nightAction(gameId, socket.id, Role.CUPID, CupidHandler.handleMakeLove, firstPlayerUUID, secondPlayerUUID)));
-
   // for going to next role
   // socket.on('lovePartnerConfirms')
 
+  // WITCH
   socket.on('spellPotion', handleErrors(({gameId, heal, killUUID}) => gameManager.nightAction(gameId, socket.id, Role.WITCH, WitchHandler.handlePotion, heal, killUUID)));
-
   // for going to next role
-  // socket.on('witchConfirms')
+  socket.on('witchConfirms', handleErrors(({gameId}) => gameManager.nightAction(gameId, socket.id, Role.SEER, SeerHandler.handleConfirm)));
 
+  // RED LADY
   socket.on('sleepover', handleErrors(({gameId, sleepoverUUID}) => gameManager.nightAction(gameId, socket.id, Role.RED_LADY, RedLadyHandler.handleSleepover, sleepoverUUID)));
 
+  // DAY
   socket.on('vote', handleErrors(({gameId, voteTargetUUID}) => gameManager.vote(gameId, socket.id, voteTargetUUID)));
 
   // after lynch: for players to go to night
   socket.on('readyForNight', handleErrors(({gameId}) => gameManager.readyForNight(gameId, socket.id)));
 
 
+  // -----
   socket.on('disconnect', () => {
     console.log('User disconnected:', socket.id);
     // TODO: possibly remove socketid from player in game-store

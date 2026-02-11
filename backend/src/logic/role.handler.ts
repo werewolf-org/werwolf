@@ -188,8 +188,9 @@ export const WitchHandler = {
         }
         if(player.socketId) socketService.notifyWitchPotionSucess(player.socketId);
     },
-    // TODO
-    handleConfirm(game: Game, player: Player) {}
+    handleConfirm(game: Game, player: Player) {
+        nextRole(game);
+    }
 }
 
 export const RedLadyHandler = {

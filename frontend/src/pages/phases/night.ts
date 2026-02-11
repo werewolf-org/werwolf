@@ -4,6 +4,7 @@ import { subscribeSelector, getState } from '../../store';
 import { Role, ROLES } from '@shared/roles.js';
 import { WerewolvesPhase } from './werewolves';
 import { SeerPhase } from './seer';
+import { RedLadyPhase } from './red-lady';
 
 export class NightPhase implements View {
     private container: HTMLElement | null = null;
@@ -92,6 +93,11 @@ export class NightPhase implements View {
         } else if (role === Role.SEER) {
             if (!(this.currentSubView instanceof SeerPhase)) {
                 this.currentSubView = new SeerPhase();
+                this.currentSubView.mount(actionContainer);
+            }
+        } else if (role === Role.RED_LADY) {
+            if (!(this.currentSubView instanceof RedLadyPhase)) {
+                this.currentSubView = new RedLadyPhase();
                 this.currentSubView.mount(actionContainer);
             }
         } else {

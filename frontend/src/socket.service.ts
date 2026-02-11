@@ -92,6 +92,11 @@ class SocketService {
         const gameId = getState().gameId;
         this.socket?.emit('seerConfirmed', { gameId });
     }
+    
+    public sleepOver(sleepoverUUID: string) {
+        const gameId = getState().gameId;
+        this.socket?.emit('sleepover', {gameId, sleepoverUUID})
+    }
 
     // --- Listeners (Dispatch to Store/Router) ---
 
