@@ -5,6 +5,7 @@ export interface Player {
     playerUUID: string, 
     displayName: string,
     isAlive: boolean,
+    role: Role | null,
 }
 
 interface AppState {

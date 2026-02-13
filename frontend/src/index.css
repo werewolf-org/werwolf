@@ -323,6 +323,33 @@ h1, h2, h3 {
 
 /* --- 5. SPECIFIC WIDGETS --- */
 
+.modal-overlay {
+    position: fixed;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    background-color: rgba(0, 0, 0, 0.85);
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    z-index: 1000;
+    padding: var(--spacing-md);
+    backdrop-filter: blur(4px);
+}
+
+.modal-content {
+    max-width: 350px;
+    width: 100%;
+    animation: popup-bounce 0.3s ease-out;
+}
+
+@keyframes popup-bounce {
+    0% { transform: scale(0.5); opacity: 0; }
+    70% { transform: scale(1.1); }
+    100% { transform: scale(1); opacity: 1; }
+}
+
 .counter-widget {
     display: flex;
     align-items: center;

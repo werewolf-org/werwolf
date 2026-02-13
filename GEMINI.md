@@ -1,19 +1,24 @@
 This is a web app for the Werwolf Game.
 
-The first functionality is a SOUNDBOARD.
-The second functionality is playing Werewolf only on mobile (without a narrator).
-This means that everyone get's his/her role via the application, then does their actions during the night and the voting during the day.
+Werewolf is a social deduction game where a informed minority of "werewolves" secretively eliminates players while an uninformed majority of "villagers" attempts to identify and vote them out.
+In this mobile version of the game, people can join a game. They then get their roles and then play the game. During the Night special roles do special actions and during the night the village can vote who to vote out and lynch.
 
 # Structure
 
-There is the frontend (`frontend/`) and the backend (`backend/`).
+There is the frontend (`frontend/`), the backend (`backend/`), and shared logic (`shared/`).
 Both are written with typescript.
+
+# Shared Logic (`shared/`)
+
+The `shared/` folder contains code that is used by both the frontend and the backend. This ensures type safety and consistency across the entire application.
+
+- **`roles.ts`**: Contains the `Role` enum, `RoleDef` interface, and the `ROLES` constant which defines the metadata (names, descriptions, teams, night order) for every role in the game.
+- **`models.ts`**: Contains common types and enums like `Phase`.
 
 # Development Setup
 
 - **Backend Port:** 3000
 - **Frontend Port:** 5173
-- **Workflow:** A `werwolf_tmux.sh` script is available to set up a tmux session with panes for `npm run dev` in both folders.
 - **Environment:** Backend uses `.env` for configuration (e.g., `ORIGIN` for CORS).
 - **Module System:** Backend is configured as ESM (`"type": "module"`).
 

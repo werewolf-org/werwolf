@@ -93,7 +93,8 @@ export class GameManager {
         const playerList = game.players.map(p => ({
             playerUUID: p.playerUUID,
             displayName: p.displayName,
-            isAlive: p.isAlive
+            isAlive: p.isAlive,
+            role: p.isAlive ? null : p.role
         }));
         socketService.notifyPlayerUpdate(game.gameId, playerList);
     }

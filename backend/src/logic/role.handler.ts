@@ -26,19 +26,17 @@ export const nextRole = (game: Game) => {
 
         resolveNightActions(game);
 
-        // const deadRoles = game.players
-        //     .filter(p => !p.isAlive)
-        //     .map(p => ({ uuid: p.playerUUID, role: p.role }));
-
+        // TODO: use logic of game.manager
         const playerList = game.players.map(p => ({
             playerUUID: p.playerUUID,
             displayName: p.displayName,
-            isAlive: p.isAlive
+            isAlive: p.isAlive,
+            role: p.isAlive ? null : p.role
         }));
 
         game.players.forEach((player) => player.nightAction = null);
-        socketService.notifyPlayerUpdate(game.gameId, playerList);
         socketService.notifyPhaseUpdate(game.gameId, Phase.DAY);
+        socketService.notifyPlayerUpdate(game.gameId, playerList);
     }
 };
 
@@ -105,13 +103,6 @@ export const resolveNightActions = (game: Game) => {
     game.players.forEach((player) => {
         if(player.playerUUID && dyingPlayerUUIDs.includes(player.playerUUID)) player.isAlive = false;
     })
-
-    const playerList = game.players.map(p => ({
-        playerUUID: p.playerUUID,
-        displayName: p.displayName,
-        isAlive: p.isAlive
-    }));
-    socketService.notifyPlayerUpdate(game.gameId, playerList);
 }
 
 export const checkCoupleDying = (game: Game, dyingUUID: string | null) => {

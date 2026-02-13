@@ -63,6 +63,9 @@ io.on('connection', (socket) => {
   socket.on('werewolfVote', handleErrors(({gameId, targetUUID}) => gameManager.nightAction(gameId, socket.id, Role.WEREWOLF, WerewolfHandler.handleVote, targetUUID)));
   // after voting: show 'other werewolves still have to vote'
 
+  // RED LADY
+  socket.on('sleepover', handleErrors(({gameId, sleepoverUUID}) => gameManager.nightAction(gameId, socket.id, Role.RED_LADY, RedLadyHandler.handleSleepover, sleepoverUUID)));
+
   // SEER
   socket.on('seeRole', handleErrors(({gameId, revealUUID}) => gameManager.nightAction(gameId, socket.id, Role.SEER, SeerHandler.handleSeeingRole, revealUUID)));
   // for going to next role
@@ -77,9 +80,6 @@ io.on('connection', (socket) => {
   socket.on('spellPotion', handleErrors(({gameId, heal, killUUID}) => gameManager.nightAction(gameId, socket.id, Role.WITCH, WitchHandler.handlePotion, heal, killUUID)));
   // for going to next role
   socket.on('witchConfirms', handleErrors(({gameId}) => gameManager.nightAction(gameId, socket.id, Role.SEER, SeerHandler.handleConfirm)));
-
-  // RED LADY
-  socket.on('sleepover', handleErrors(({gameId, sleepoverUUID}) => gameManager.nightAction(gameId, socket.id, Role.RED_LADY, RedLadyHandler.handleSleepover, sleepoverUUID)));
 
   // DAY
   socket.on('vote', handleErrors(({gameId, voteTargetUUID}) => gameManager.vote(gameId, socket.id, voteTargetUUID)));
