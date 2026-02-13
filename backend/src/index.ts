@@ -79,7 +79,7 @@ io.on('connection', (socket) => {
   // WITCH
   socket.on('spellPotion', handleErrors(({gameId, heal, killUUID}) => gameManager.nightAction(gameId, socket.id, Role.WITCH, WitchHandler.handlePotion, heal, killUUID)));
   // for going to next role
-  socket.on('witchConfirms', handleErrors(({gameId}) => gameManager.nightAction(gameId, socket.id, Role.SEER, SeerHandler.handleConfirm)));
+  socket.on('witchConfirms', handleErrors(({gameId}) => gameManager.nightAction(gameId, socket.id, Role.WITCH, SeerHandler.handleConfirm)));
 
   // DAY
   socket.on('vote', handleErrors(({gameId, voteTargetUUID}) => gameManager.vote(gameId, socket.id, voteTargetUUID)));

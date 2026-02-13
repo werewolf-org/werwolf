@@ -224,8 +224,7 @@ export class GameManager {
         // check if player exists & has correct role
         const player = game.players.find((player) => player.socketId === socketId);
         if(!player) throw new Error(`Player with socketId ${socketId} not found in ${game.gameId}`);
-        if(player.role !== role) throw new Error(`Player with UUID ${player.playerUUID} does not have the correct role to do the night action`);
-        if(player.nightAction) throw new Error(`Player with UUID ${player.playerUUID} already did a night action`);
+        if(player.role !== role) throw new Error(`Player with UUID ${player.playerUUID} does not have the correct role to do the night action of the role (${player.role} !== ${role})`);
         if(ROLES[player.role].wakesUp === false) throw new Error(`Player ${player.playerUUID} has role ${player.role}, but it doesnt wake up in the night`);
         return player;
     }

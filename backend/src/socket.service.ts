@@ -102,12 +102,12 @@ export class SocketService {
         this.emitToPlayer(socketId, 'lovePartner', { partnerUUID });
     }
 
-    public notifyWitchPotionSucess(socketId: string) {
-        this.emitToPlayer(socketId, 'potionsSuccessful', {});
-    }
-
     public notifyRedLadySleepover(socketId: string, targetUUID: string) {
         this.emitToPlayer(socketId, 'sleepoverSuccessful', { targetUUID });
+    }
+
+    public notifyWitchData(socketId: string, victimUUID: string | null, usedHealingPotion: boolean, usedKillingPotion: boolean) {
+        this.emitToPlayer(socketId, 'witchData', { victimUUID, usedHealingPotion, usedKillingPotion});
     }
 
     // --- Error Handling ---

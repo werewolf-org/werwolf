@@ -25,10 +25,12 @@ interface AppState {
     
     players: Player[];
     
-    //game specific
+    // player & game specific
     seerReveal: { playerUUID: string, role: Role } | null;
+    witchData: { victimUUID: string | null, usedHealingPotion: boolean, usedKillingPotion: boolean } | null;
+
     voteResults: Record<string, string | null> | null;
-    votedOutUUID: string | null
+    votedOutUUID: string | null;
 }
 
 const state: AppState = {
@@ -47,8 +49,9 @@ const state: AppState = {
     players: [],
 
     seerReveal: null,
+    witchData: null,
     voteResults: null,
-    votedOutUUID: null
+    votedOutUUID: null,
 };
 
 

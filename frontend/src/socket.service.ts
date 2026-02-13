@@ -98,6 +98,17 @@ class SocketService {
         this.socket?.emit('sleepover', {gameId, sleepoverUUID})
     }
 
+    public spellPotion(type: 'HEAL' | 'KILL', killUUID: string | null) {
+        const gameId = getState().gameId;
+        const heal: boolean = type === 'HEAL';
+        this.socket?.emit('spellPotion', { gameId, heal, killUUID });
+    }
+
+    public witchConfirms() {
+        const gameId = getState().gameId;
+        this.socket?.emit('witchConfirms', { gameId });
+    }
+
     // --- Listeners (Dispatch to Store/Router) ---
 
     private setupListeners() {
@@ -142,16 +153,16 @@ class SocketService {
             });
         });
 
+        this.socket.on('roleAssigned', (data: { role: Role }) => {
+            setState({phase: Phase.DISTRIBUTION, role: data.role})
+        })
+
         this.socket.on('updatePlayers', (data: { players: [] }) => {
             setState({players: data.players});
         })
 
         this.socket.on('updatePhase', (data: { phase: Phase }) => {
             setState({phase: data.phase});
-        })
-
-        this.socket.on('roleAssigned', (data: { role: Role }) => {
-            setState({phase: Phase.DISTRIBUTION, role: data.role})
         })
 
         // TODO: maybe make another event nightStart for better seperability (that would be called when game starts or day is over)
@@ -165,6 +176,10 @@ class SocketService {
 
         this.socket.on('seePlayer', (data: {playerUUID: string, role: Role}) => {
             setState({ seerReveal: data });
+        })
+
+        this.socket.on('witchData', (data: {victimUUID: string | null, usedHealingPotion: boolean, usedKillingPotion: boolean}) => {
+            setState({witchData: data});
         })
 
     }
