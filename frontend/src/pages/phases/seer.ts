@@ -14,8 +14,7 @@ export class SeerPhase implements View {
         this.container.innerHTML = seerHtml;
 
         // Subscribe to reveal state changes
-        subscribeSelector(s => s.seerReveal, (reveal) => {
-            console.log(reveal);
+        subscribeSelector(s => s.seerReveal, () => {
             this.updateView();
         });
 
@@ -82,7 +81,7 @@ export class SeerPhase implements View {
             confirmBtn.addEventListener('click', () => {
                 if (this.selectedTargetUUID && !this.hasActed) {
                     this.hasActed = true;
-                    socketService.seeRole(this.selectedTargetUUID);
+                    socketService.revealRole(this.selectedTargetUUID);
                     
                     // Show waiting state immediately
                     const controls = document.querySelector('.manager-controls') as HTMLElement;

@@ -6,9 +6,17 @@ import { socketService } from "../socket.service.js";
 export const nextRole = (game: Game) => {
     const rolesInGame = new Set(game.players.filter(p => p.isAlive).map(p => p.role));
 
+    // TODO Refactor: use same logic as in game.manager
     // Determine the order of roles that wake up this night
     const wakeOrder = (Object.keys(ROLES) as Role[])
-        .filter(role => ROLES[role].wakesUp && rolesInGame.has(role))
+        .filter(role => {
+            const def = ROLES[role];
+            const isRoleInGame = rolesInGame.has(role);
+            const isFirstNightOnly = def.onlyFirstNight;
+            const isFirstNight = game.round === 0;
+
+            return def.wakesUp && isRoleInGame && (!isFirstNightOnly || isFirstNight);
+        })
         .sort((a, b) => ROLES[a].nightOrder - ROLES[b].nightOrder);
 
     // Find where we are in the sequence
@@ -22,7 +30,7 @@ export const nextRole = (game: Game) => {
 
         // emit new data for roles to frontend
         switch(nextActiveRole) {
-            case Role.WITCH: WitchHandler.handleInitPhase(game); break;
+            case Role.WITCH: WitchHandler.handlePhaseInit(game); break;
             default: break;
         }
     } else {
@@ -32,7 +40,7 @@ export const nextRole = (game: Game) => {
 
         resolveNightActions(game);
 
-        // TODO: use logic of game.manager
+        // TODO Refactor: use logic of game.manager here (broadcastPlayerUpdate())
         const playerList = game.players.map(p => ({
             playerUUID: p.playerUUID,
             displayName: p.displayName,
@@ -145,7 +153,7 @@ export const WerewolfHandler = {
 }
 
 export const SeerHandler = {
-    handleSeeingRole(game: Game, player: Player, revealUUID: string): void {
+    handleRevealingRole(game: Game, player: Player, revealUUID: string): void {
         const playerToSee = game.players.find((player) => player.playerUUID === revealUUID);
         if(!playerToSee) throw new Error(`Player with UUID ${revealUUID} not found, cannot see this players role`);
         if(!playerToSee.role) throw new Error(`Player with UUID ${revealUUID} does not have a role`);
@@ -157,8 +165,7 @@ export const SeerHandler = {
 }
 
 export const CupidHandler = {
-    handleMakeLove(game: Game, player: Player, firstPlayerUUID: string, secondPlayerUUID: string): void {
-
+    handleBindLovers(game: Game, player: Player, firstPlayerUUID: string, secondPlayerUUID: string): void {
         if(game.round && game.round > 0) throw new Error(`Game ${game.gameId} is already in round ${game.round}, so cupid cannot do action`)
         
         const firstPlayerInLove = game.players.find((player) => player.playerUUID === firstPlayerUUID);
@@ -168,11 +175,14 @@ export const CupidHandler = {
         firstPlayerInLove.lovePartner = secondPlayerInLove.playerUUID;
         secondPlayerInLove.lovePartner = firstPlayerInLove.playerUUID;
         
+        const gameManager = game.players.find((player) => player.playerUUID == game.managerUUID);
+        // only for playing sounds
+        if(gameManager && gameManager.socketId) socketService.notifyNewCouple(gameManager.socketId);
         if(firstPlayerInLove.socketId) socketService.notifyLovePartner(firstPlayerInLove.socketId, secondPlayerUUID);
         if(secondPlayerInLove.socketId) socketService.notifyLovePartner(secondPlayerInLove.socketId, firstPlayerUUID);
     },
     // WARNING: here the player is not the cupid but the love partner
-    handleLovePartnerConfirms(game: Game, player: Player) {
+    handleLoverConfirmsBond(game: Game, player: Player) {
         const lovePartners = game.players.filter((player) => player.lovePartner);
         if(!lovePartners.find((partner) => partner === player)) throw new Error(`Player ${player.playerUUID} in Game ${game.gameId} is not part of the love partners`);
         player.lovePartnerConfirmed = true;
@@ -181,7 +191,7 @@ export const CupidHandler = {
 }
 
 export const WitchHandler = {
-    handleInitPhase(game: Game) {
+    handlePhaseInit(game: Game) {
         const victimUUID: string | null = getWerewolfVictimUUID(game);
         const witches = game.players.filter((player) => player.role === Role.WITCH);
         witches.forEach((witch) => {
@@ -214,7 +224,6 @@ export const WitchHandler = {
 
 export const RedLadyHandler = {
     handleSleepover(game: Game, player: Player, sleepoverUUID: string): void {
-        if(player.socketId) socketService.notifyRedLadySleepover(player.socketId, sleepoverUUID);
         player.nightAction = { sleepoverUUID: sleepoverUUID };
         nextRole(game);
     }

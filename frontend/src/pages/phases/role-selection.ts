@@ -3,7 +3,7 @@ import selectionHtml from './role-selection.html?raw';
 import { getState } from '../../store';
 import { socketService } from '../../socket.service';
 import { Role, ROLES } from '@shared/roles.js';
-import rsaData from '../../data/rsa.json';
+import rsaData from '../../data/role-presets.json';
 
 interface RoleCount {
     role: Role;
@@ -52,7 +52,7 @@ export class RoleSelectionPhase implements View {
             Role.CUPID,
             Role.RED_LADY,
             Role.LITTLE_GIRL,
-            Role.HUNTER
+            // Role.HUNTER
         ];
 
         this.roles = order.map((roleKey) => {

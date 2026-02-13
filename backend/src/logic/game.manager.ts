@@ -19,7 +19,7 @@ export class GameManager {
 
         const newGame: Game = {
             gameId: gameId,
-            manager: null,
+            managerUUID: null,
             players: [],
             round: 0,
             phase: Phase.LOBBY,
@@ -29,7 +29,7 @@ export class GameManager {
         socketService.notifyGameCreated(socketId, gameId);
         this.store.createGame(newGame);
         socketService.joinRoom(socketId, gameId);
-        this.pushPlayerList(newGame);
+        this.broadcastPlayerUpdate(newGame);
         console.log(`Game ${gameId} was created`);
     }
 
@@ -44,7 +44,7 @@ export class GameManager {
         else this.rejoinGame(game.gameId, playerUUID, socketId);
         
         socketService.joinRoom(socketId, game.gameId);
-        this.pushPlayerList(game);
+        this.broadcastPlayerUpdate(game);
 
         console.log(`Player ${playerUUID} joined game ${gameId}`);
     }
@@ -53,6 +53,7 @@ export class GameManager {
         const game = this.store.getGame(gameId);
         if(!game) throw new Error(`Game with ID ${gameId} not found!`)
         const isManager = game.players.length === 0;
+        if(isManager) game.managerUUID = playerUUID;
         const newPlayer: Player = {
             displayName: '',
             role: null,
@@ -60,7 +61,6 @@ export class GameManager {
             socketId: socketId,
             playerUUID: playerUUID, 
             nightAction: null,
-            isGameMaster: isManager,
             isAlive: true,
             isSheriff: false,
             lovePartner: null,
@@ -75,7 +75,7 @@ export class GameManager {
           gameId: gameId,
           playerUUID: playerUUID,
           activeNightRole: game.activeNightRole,
-          isManager: newPlayer.isGameMaster
+          isManager: isManager
         })
         this.store.updateGame(game);
     }
@@ -90,7 +90,7 @@ export class GameManager {
         this.store.updateGame(game);
     }
 
-    pushPlayerList(game: Game): void {
+    broadcastPlayerUpdate(game: Game): void {
         const playerList = game.players.map(p => ({
             playerUUID: p.playerUUID,
             displayName: p.displayName,
@@ -107,7 +107,7 @@ export class GameManager {
         const playerWithID = game.players.find((player) => player.playerUUID == playerUUID);
         if(!playerWithID) throw new Error(`Player with UUID ${playerUUID} not found in Game`);
         playerWithID.displayName = playerName;
-        this.pushPlayerList(game);
+        this.broadcastPlayerUpdate(game);
         console.log(`Player ${playerUUID} changed name to ${playerName}`)!
         this.store.updateGame(game);
     }
@@ -118,7 +118,7 @@ export class GameManager {
         if(game.phase !== Phase.LOBBY) throw new Error(`Game ${gameId} is already in progress, so joining cannot be closed.`);
 
         game.phase = Phase.ROLE_SELECTION;
-        this.pushPlayerList(game);
+        this.broadcastPlayerUpdate(game);
         socketService.notifyPhaseUpdate(game.gameId, game.phase);
         this.store.updateGame(game);
     }
@@ -173,7 +173,7 @@ export class GameManager {
         if(!game) throw new Error(`Game with ID ${gameId} not found!`)
         if(game.phase !== Phase.DISTRIBUTION) throw new Error(`Game ${gameId} is not currently in the right phase to be started!`);
         game.phase = Phase.NIGHT;
-        game.activeNightRole = this.getFirstToWakeUp(game.players);
+        game.activeNightRole = this.getFirstToWakeUp(game);
         socketService.notifyPhaseUpdate(game.gameId, Phase.NIGHT);
         if(game.activeNightRole) socketService.notifyNextActiveRole(game.gameId, game.activeNightRole);
         else throw new Error(`Game ${game.gameId} does not have an active night role (${game.activeNightRole}), although the game started!`);
@@ -181,12 +181,19 @@ export class GameManager {
         this.store.updateGame(game);
     }
 
-    private getFirstToWakeUp(players: Player[]): Role | null {
-        const rolesInGame = new Set(players.filter(p => p.isAlive).map(p => p.role));
+    private getFirstToWakeUp(game: Game): Role | null {
+        const rolesInGame = new Set(game.players.filter(p => p.isAlive).map(p => p.role));
 
         // Determine the order of roles that wake up this night
         const wakeOrder = (Object.keys(ROLES) as Role[])
-            .filter(role => ROLES[role].wakesUp && rolesInGame.has(role))
+            .filter(role => {
+                const def = ROLES[role];
+                const isRoleInGame = rolesInGame.has(role);
+                const isFirstNightOnly = def.onlyFirstNight;
+                const isFirstNight = game.round === 0;
+
+                return def.wakesUp && isRoleInGame && (!isFirstNightOnly || isFirstNight);
+            })
             .sort((a, b) => ROLES[a].nightOrder - ROLES[b].nightOrder);
         
         return wakeOrder[0] ?? null;
@@ -233,7 +240,7 @@ export class GameManager {
         const everyoneVoted: boolean = this.checkIfEveryoneVoted(game);
         if(everyoneVoted) {
             const votedOutPlayer = this.resolveVoting(game);
-            this.pushPlayerList(game);
+            this.broadcastPlayerUpdate(game);
             console.log(`Voting Resolved in Game ${gameId}. Player voted out: ${votedOutPlayer?.playerUUID}`)
         }
 
@@ -310,8 +317,9 @@ export class GameManager {
         console.log(socketId, alivePlayers.length, readyPlayers.length);
         if(alivePlayers.length === readyPlayers.length) {
             // go to night phase
+            game.round = game.round + 1;
             game.phase = Phase.NIGHT;
-            game.activeNightRole = this.getFirstToWakeUp(game.players);
+            game.activeNightRole = this.getFirstToWakeUp(game);
             if(!game.activeNightRole) throw new Error(`Game with ID ${gameId} cannot go to Night, no first night role`)
             socketService.notifyNextActiveRole(game.gameId, game.activeNightRole);
 

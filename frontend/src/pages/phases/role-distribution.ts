@@ -3,6 +3,7 @@ import distributionHtml from './role-distribution.html?raw';
 import { getState } from '../../store';
 import { socketService } from '../../socket.service';
 import { ROLES } from '@shared/roles.js';
+import { audioService } from '../../audio.service';
 
 export class RoleDistributionPhase implements View {
     private container: HTMLElement | null = null;
@@ -15,6 +16,8 @@ export class RoleDistributionPhase implements View {
         const role = state.role;
         const isManager = state.isManager;
 
+        audioService.playNarration('game_start', 'stack');
+
         // 1. Display Role Info
         if (role && ROLES[role]) {
             const roleDef = ROLES[role];
@@ -26,7 +29,7 @@ export class RoleDistributionPhase implements View {
             if (descDisplay) descDisplay.innerText = roleDef.description;
 
             const imgDisplay = document.getElementById('role-image') as HTMLImageElement;
-            if (imgDisplay) imgDisplay.src = `/${role.toUpperCase()}.png`;
+            if (imgDisplay) imgDisplay.src = `/icons/${role.toUpperCase()}.png`;
         }
 
         // 2. Toggle Manager Controls

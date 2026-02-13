@@ -78,10 +78,6 @@ export class SocketService {
         this.emitToRoom(gameId, 'nextActiveRole', { role });
     }
 
-    // public notifyDayStarts(gameid: string, data: { deadRoles: any[], playerList: any[] }) {
-    //     this.emitToRoom(gameid, 'dayStarts', data);
-    // }
-
     public notifyVotingResolved(gameId: string, votedOutUUID: string | null, allVotes: Record<string, string | null>) {
         this.emitToRoom(gameId, 'votingResolved', { votedOutUUID, allVotes });
     }
@@ -98,12 +94,12 @@ export class SocketService {
         this.emitToPlayer(socketId, 'seePlayer', { playerUUID: targetUUID, role });
     }
 
-    public notifyLovePartner(socketId: string, partnerUUID: string) {
-        this.emitToPlayer(socketId, 'lovePartner', { partnerUUID });
+    public notifyNewCouple(socketId: string) {
+        this.emitToPlayer(socketId, 'newCouple', {});
     }
 
-    public notifyRedLadySleepover(socketId: string, targetUUID: string) {
-        this.emitToPlayer(socketId, 'sleepoverSuccessful', { targetUUID });
+    public notifyLovePartner(socketId: string, partnerUUID: string) {
+        this.emitToPlayer(socketId, 'lovePartner', { partnerUUID });
     }
 
     public notifyWitchData(socketId: string, victimUUID: string | null, usedHealingPotion: boolean, usedKillingPotion: boolean) {

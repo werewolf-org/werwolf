@@ -3,6 +3,7 @@ import dayHtml from './day.html?raw';
 import { getState, subscribeSelector } from '../../store';
 import { socketService } from '../../socket.service';
 import { Role, ROLES } from '@shared/roles.js';
+import { audioService } from '../../audio.service';
 
 export class DayPhase implements View {
     private container: HTMLElement | null = null;
@@ -17,6 +18,8 @@ export class DayPhase implements View {
 
         // Switch to Light Mode for Day
         document.body.classList.add('light-mode');
+
+        audioService.playNarration('morning', 'overwrite');
 
         // Initialize known deaths from current state
         const initialState = getState();
@@ -177,6 +180,8 @@ export class DayPhase implements View {
         const resultView = document.getElementById('day-result-view');
         if (votingView) votingView.style.display = 'none';
         if (resultView) resultView.style.display = 'block';
+
+        audioService.playNarration('end_of_day', 'overwrite');
 
         this.renderResultData();
 

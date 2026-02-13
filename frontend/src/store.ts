@@ -22,7 +22,6 @@ interface AppState {
     lovePartnerUUID: string | null,
     phase: Phase| null,
     activeNightRole: Role | null,
-    round: number,
     
     players: Player[];
     
@@ -45,7 +44,6 @@ const state: AppState = {
     role: null,
     phase: null,
     activeNightRole: null,
-    round: 0,
 
     players: [],
 

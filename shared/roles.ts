@@ -6,7 +6,7 @@ export enum Role {
     WITCH = "WITCH",
     RED_LADY = "RED_LADY",
     LITTLE_GIRL = "LITTLE_GIRL",
-    HUNTER = "HUNTER"
+    // HUNTER = "HUNTER"
 }
 
 export enum Team {
@@ -94,16 +94,16 @@ export const ROLES: Record<Role, RoleDef> = {
         nightOrder: -1,
         team: Team.VILLAGE
     },
-    [Role.HUNTER]: {
-        role: Role.HUNTER,
-        displayName: "Hunter",
-        pluralName: "Hunters",
-        description: "If you are eliminated, you have the power to fire a final shot and take one other player down with you.",
-        narratorNotes: "When eliminated: Ask Hunter to point one final target; resolve that elimination immediately.",
-        wakesUp: false,
-        nightOrder: -1,
-        team: Team.VILLAGE
-    },
+    // [Role.HUNTER]: {
+    //     role: Role.HUNTER,
+    //     displayName: "Hunter",
+    //     pluralName: "Hunters",
+    //     description: "If you are eliminated, you have the power to fire a final shot and take one other player down with you.",
+    //     narratorNotes: "When eliminated: Ask Hunter to point one final target; resolve that elimination immediately.",
+    //     wakesUp: false,
+    //     nightOrder: -1,
+    //     team: Team.VILLAGE
+    // },
     [Role.LITTLE_GIRL]: {
         role: Role.LITTLE_GIRL,
         displayName: "Little Girl",

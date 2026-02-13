@@ -2,6 +2,7 @@ import type { View } from '../../router';
 import witchHtml from './witch.html?raw';
 import { getState, setState, subscribeSelector } from '../../store';
 import { socketService } from '../../socket.service';
+import { audioService } from '../../audio.service';
 
 export class WitchPhase implements View {
     private container: HTMLElement | null = null;
@@ -10,6 +11,8 @@ export class WitchPhase implements View {
     mount(container: HTMLElement): void {
         this.container = container;
         this.container.innerHTML = witchHtml;
+        
+        audioService.playNarration('witch_wakes')
 
         subscribeSelector(s => s.witchData, () => {
             this.renderWitchView();
@@ -77,7 +80,7 @@ export class WitchPhase implements View {
             healBtn.addEventListener('click', () => {
                 const data = getState().witchData;
                 if (data && data.victimUUID) {
-                    socketService.spellPotion('HEAL', null);
+                    socketService.usePotion('HEAL', null);
                     // UI deactivation happens via store subscription
                 }
             });
@@ -134,7 +137,7 @@ export class WitchPhase implements View {
                 
                 const targetUUID = item.getAttribute('data-uuid');
                 if (targetUUID) {
-                    socketService.spellPotion('KILL', targetUUID);
+                    socketService.usePotion('KILL', targetUUID);
                 }
             });
         });

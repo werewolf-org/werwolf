@@ -67,7 +67,7 @@ export class CupidPhase implements View {
             confirmBtn.addEventListener('click', () => {
                 if (this.selectedTargetUUIDs.length === 2 && !this.hasActed) {
                     this.hasActed = true;
-                    socketService.makeLove(this.selectedTargetUUIDs[0]!, this.selectedTargetUUIDs[1]!);
+                    socketService.bindLovers(this.selectedTargetUUIDs[0]!, this.selectedTargetUUIDs[1]!);
                     this.updateView();
                 }
             });
@@ -80,7 +80,7 @@ export class CupidPhase implements View {
             confirmBtn.addEventListener('click', () => {
                 if (!this.hasConfirmedLove) {
                     this.hasConfirmedLove = true;
-                    socketService.lovePartnerConfirms();
+                    socketService.confirmLoverBond();
                     this.updateView();
                 }
             });

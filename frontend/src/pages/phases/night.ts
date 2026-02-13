@@ -7,6 +7,7 @@ import { SeerPhase } from './seer';
 import { RedLadyPhase } from './red-lady';
 import { WitchPhase } from './witch';
 import { CupidPhase } from './cupid';
+import { audioService } from '../../audio.service';
 
 export class NightPhase implements View {
     private container: HTMLElement | null = null;
@@ -17,12 +18,28 @@ export class NightPhase implements View {
         this.container.innerHTML = nightHtml;
 
         // Subscribe to changes in the active role and the player's own role
-        subscribeSelector(s => s.activeNightRole, () => this.updateNightView());
+        subscribeSelector(s => s.activeNightRole, () => {
+            this.playRoleWakingAudio();
+            this.updateNightView();
+        });
         subscribeSelector(s => s.role, () => this.updateNightView());
         subscribeSelector(s => s.lovePartnerUUID, () => this.updateNightView());
 
         // Initial render
         this.updateNightView();
+    }
+
+    private playRoleWakingAudio() {
+        const role = getState().activeNightRole;
+        audioService.playNarration('close_your_eyes', 'overwrite');
+        switch(role) {
+            case Role.CUPID: audioService.playNarration('cupid_wakes'); break;
+            case Role.RED_LADY: audioService.playNarration('red_lady_wakes'); break;
+            case Role.SEER: audioService.playNarration('seer_wakes'); break;
+            case Role.WEREWOLF: audioService.playNarration('werewolf_wakes'); break;
+            case Role.WITCH: audioService.playNarration('witch_wakes'); break;
+            default: break;
+        }
     }
 
     private updateNightView() {

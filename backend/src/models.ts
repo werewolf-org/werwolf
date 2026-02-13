@@ -8,7 +8,6 @@ export interface Player {
     role: Role | null,
     voteTargetUUID: string | null, // who they vote for
     nightAction: object | null,
-    isGameMaster: boolean,
     isAlive: boolean,
     isSheriff: boolean,
     lovePartner: string | null,
@@ -20,7 +19,7 @@ export interface Player {
 
 export interface Game {
     gameId: string,
-    manager: string | null, // PlayerUUID of Game Manager
+    managerUUID: string | null, // PlayerUUID of Game Manager
     players: Player[],
     round: number,
     phase: Phase,

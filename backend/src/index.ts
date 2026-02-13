@@ -67,19 +67,19 @@ io.on('connection', (socket) => {
   socket.on('sleepover', handleErrors(({gameId, sleepoverUUID}) => gameManager.nightAction(gameId, socket.id, Role.RED_LADY, RedLadyHandler.handleSleepover, sleepoverUUID)));
 
   // SEER
-  socket.on('seeRole', handleErrors(({gameId, revealUUID}) => gameManager.nightAction(gameId, socket.id, Role.SEER, SeerHandler.handleSeeingRole, revealUUID)));
+  socket.on('revealRole', handleErrors(({gameId, revealUUID}) => gameManager.nightAction(gameId, socket.id, Role.SEER, SeerHandler.handleRevealingRole, revealUUID)));
   // for going to next role
   socket.on('seerConfirmed', handleErrors(({gameId}) => gameManager.nightAction(gameId, socket.id, Role.SEER, SeerHandler.handleConfirm)));
 
   // CUPID
-  socket.on('makeLove', handleErrors(({gameId, firstPlayerUUID, secondPlayerUUID}) => gameManager.nightAction(gameId, socket.id, Role.CUPID, CupidHandler.handleMakeLove, firstPlayerUUID, secondPlayerUUID)));
+  socket.on('bindLovers', handleErrors(({gameId, firstPlayerUUID, secondPlayerUUID}) => gameManager.nightAction(gameId, socket.id, Role.CUPID, CupidHandler.handleBindLovers, firstPlayerUUID, secondPlayerUUID)));
   // for going to next role
-  socket.on('lovePartnerConfirms', handleErrors(({gameId}) => gameManager.nightAction(gameId, socket.id, null, CupidHandler.handleLovePartnerConfirms)));
+  socket.on('confirmLoverBond', handleErrors(({gameId}) => gameManager.nightAction(gameId, socket.id, null, CupidHandler.handleLoverConfirmsBond)));
 
   // WITCH
-  socket.on('spellPotion', handleErrors(({gameId, heal, killUUID}) => gameManager.nightAction(gameId, socket.id, Role.WITCH, WitchHandler.handlePotion, heal, killUUID)));
+  socket.on('usePotion', handleErrors(({gameId, heal, killUUID}) => gameManager.nightAction(gameId, socket.id, Role.WITCH, WitchHandler.handlePotion, heal, killUUID)));
   // for going to next role
-  socket.on('witchConfirms', handleErrors(({gameId}) => gameManager.nightAction(gameId, socket.id, Role.WITCH, SeerHandler.handleConfirm)));
+  socket.on('witchConfirms', handleErrors(({gameId}) => gameManager.nightAction(gameId, socket.id, Role.WITCH, WitchHandler.handleConfirm)));
 
   // DAY
   socket.on('vote', handleErrors(({gameId, voteTargetUUID}) => gameManager.vote(gameId, socket.id, voteTargetUUID)));

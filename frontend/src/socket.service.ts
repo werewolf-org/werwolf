@@ -3,6 +3,7 @@ import { getState, setState } from './store';
 import { navigate } from './router';
 import { Phase } from '@shared/models';
 import { Role } from '@shared/roles';
+import { audioService } from './audio.service';
 
 class SocketService {
     private socket: Socket | null = null;
@@ -83,9 +84,9 @@ class SocketService {
         this.socket?.emit('werewolfVote', { gameId, targetUUID });
     }
     
-    public seeRole(revealUUID: string) {
+    public revealRole(revealUUID: string) {
         const gameId = getState().gameId;
-        this.socket?.emit('seeRole', ({gameId, revealUUID}));
+        this.socket?.emit('revealRole', ({gameId, revealUUID}));
     }
 
     public seerConfirmed() {
@@ -98,10 +99,10 @@ class SocketService {
         this.socket?.emit('sleepover', {gameId, sleepoverUUID})
     }
 
-    public spellPotion(type: 'HEAL' | 'KILL', killUUID: string | null) {
+    public usePotion(type: 'HEAL' | 'KILL', killUUID: string | null) {
         const gameId = getState().gameId;
         const heal: boolean = type === 'HEAL';
-        this.socket?.emit('spellPotion', { gameId, heal, killUUID });
+        this.socket?.emit('usePotion', { gameId, heal, killUUID });
     }
 
     public witchConfirms() {
@@ -109,14 +110,14 @@ class SocketService {
         this.socket?.emit('witchConfirms', { gameId });
     }
 
-    public makeLove(firstPlayerUUID: string, secondPlayerUUID: string) {
+    public bindLovers(firstPlayerUUID: string, secondPlayerUUID: string) {
         const gameId = getState().gameId;
-        this.socket?.emit('makeLove', { gameId, firstPlayerUUID, secondPlayerUUID });
+        this.socket?.emit('bindLovers', { gameId, firstPlayerUUID, secondPlayerUUID });
     }
 
-    public lovePartnerConfirms() {
+    public confirmLoverBond() {
         const gameId = getState().gameId;
-        this.socket?.emit('lovePartnerConfirms', { gameId });
+        this.socket?.emit('confirmLoverBond', { gameId });
     }
 
     // --- Listeners (Dispatch to Store/Router) ---
@@ -159,7 +160,6 @@ class SocketService {
                 lovePartnerUUID: null,
                 phase: Phase.LOBBY,
                 activeNightRole: data.activeNightRole,
-                round: 0
             });
         });
 
@@ -194,6 +194,10 @@ class SocketService {
 
         this.socket.on('lovePartner', (data: { partnerUUID: string}) => {
             setState({lovePartnerUUID: data.partnerUUID});
+        });
+
+        this.socket.on('newCouple', () => {
+            audioService.playNarration('love_partners', 'overwrite');
         });
 
 

@@ -43,7 +43,6 @@ export class GamePage implements View {
 
     private renderPhase(phase: Phase): void {
         if (!this.phaseContainer) return;
-        console.log(`Phase: ${phase}`)
 
         // Safety: Ensure Dark Mode if not in Day Phase
         if (phase !== Phase.DAY) {
