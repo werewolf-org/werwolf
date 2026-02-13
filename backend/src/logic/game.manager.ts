@@ -64,6 +64,7 @@ export class GameManager {
             isAlive: true,
             isSheriff: false,
             lovePartner: null,
+            lovePartnerConfirmed: false,
             usedHealingPotion: false,
             usedKillingPotion: false,
             readyForNight: false
@@ -191,45 +192,22 @@ export class GameManager {
         return wakeOrder[0] ?? null;
     }
 
-    // nightAction(gameId: string, socketId: string, action: NightAction, role: Role, io: Server): Game {
-    //     const game = this.store.getGame(gameId);
-    //     if(!game) throw new Error(`Game with ID ${gameId} not found!`)
-    //     if(game.phase !== Phase.NIGHT) throw new Error(`Game ${gameId} is not current in Night Phase, cannot do Night Action!`);
-
-    //     // check if player exists & has correct role
-    //     const player = game.players.find((player) => player.socketId === socketId);
-    //     if(player === undefined) throw new Error(`Player with socketId ${socketId} not found in ${gameId}`);
-    //     if(player.role !== role) throw new Error(`Player with UUID ${player.playerUUID} does not have the correct role to do the night action`);
-    //     if(player.nightAction) throw new Error(`Player with UUID ${player.playerUUID} already did a night action`);
-
-    //     switch(role){ 
-    //         case Role.WEREWOLF: WerewolfHandler.handleNightAction(game, player, action, io); break;
-    //         case Role.SEER: SeerHandler.handleNightAction(game, player, action, io); break;
-    //         case Role.CUPID: CupidHandler.handleNightAction(game, player, action, io); break;
-    //         case Role.WITCH: WitchHandler.handleNightAction(game, player, action, io); break;
-    //         case Role.RED_LADY: RedLadyHandler.handleNightAction(game, player, action, io); break;
-    //         case Role.VILLAGER: throw new Error(`Role ${role} does note wake up, no Night Action`);
-    //         case Role.LITTLE_GIRL: throw new Error(`Role ${role} does note wake up, no Night Action`);
-    //         case Role.HUNTER: throw new Error(`Role ${role} does note wake up, no Night Action`);
-    //         default: break;
-    //     }
-
-    //     this.store.updateGame(game);
-    //     return game;
-    // }
-
-    private getPlayerFromNight(game: Game, socketId: string, role: Role): Player {
+    // if role === null: Role does not matter
+    // e.g. in Cupid phase also non cupid players do actions (lovePartnerConfirms)
+    private getPlayerFromNight(game: Game, socketId: string, role: Role | null): Player {
         if(game.phase !== Phase.NIGHT) throw new Error(`Game ${game.gameId} is not current in Night Phase, cannot do Night Action!`);
 
         // check if player exists & has correct role
         const player = game.players.find((player) => player.socketId === socketId);
         if(!player) throw new Error(`Player with socketId ${socketId} not found in ${game.gameId}`);
-        if(player.role !== role) throw new Error(`Player with UUID ${player.playerUUID} does not have the correct role to do the night action of the role (${player.role} !== ${role})`);
-        if(ROLES[player.role].wakesUp === false) throw new Error(`Player ${player.playerUUID} has role ${player.role}, but it doesnt wake up in the night`);
+        if(role) {
+            if(player.role !== role) throw new Error(`Player with UUID ${player.playerUUID} does not have the correct role to do the night action of the role (${player.role} !== ${role})`);
+            if(ROLES[player.role].wakesUp === false) throw new Error(`Player ${player.playerUUID} has role ${player.role}, but it doesnt wake up in the night`);
+        }
         return player;
     }
 
-    nightAction<T extends any[]> (gameId: string, socketId: string, role: Role,
+    nightAction<T extends any[]> (gameId: string, socketId: string, role: Role | null,
         handler: (game: Game, player: Player, ...args: T) => void,
         ...handlerArgs: T
     ): void {

@@ -171,9 +171,13 @@ export const CupidHandler = {
         if(firstPlayerInLove.socketId) socketService.notifyLovePartner(firstPlayerInLove.socketId, secondPlayerUUID);
         if(secondPlayerInLove.socketId) socketService.notifyLovePartner(secondPlayerInLove.socketId, firstPlayerUUID);
     },
-    // TODO (nextRole)
-    // WARNING: here the player is not the cupid
-    handleLovePartnerConfirms(game: Game, player: Player) {}
+    // WARNING: here the player is not the cupid but the love partner
+    handleLovePartnerConfirms(game: Game, player: Player) {
+        const lovePartners = game.players.filter((player) => player.lovePartner);
+        if(!lovePartners.find((partner) => partner === player)) throw new Error(`Player ${player.playerUUID} in Game ${game.gameId} is not part of the love partners`);
+        player.lovePartnerConfirmed = true;
+        if(lovePartners.filter((partner) => partner.lovePartnerConfirmed).length >= 2) nextRole(game);
+    }
 }
 
 export const WitchHandler = {

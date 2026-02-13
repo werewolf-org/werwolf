@@ -6,6 +6,7 @@ import { WerewolvesPhase } from './werewolves';
 import { SeerPhase } from './seer';
 import { RedLadyPhase } from './red-lady';
 import { WitchPhase } from './witch';
+import { CupidPhase } from './cupid';
 
 export class NightPhase implements View {
     private container: HTMLElement | null = null;
@@ -16,13 +17,9 @@ export class NightPhase implements View {
         this.container.innerHTML = nightHtml;
 
         // Subscribe to changes in the active role and the player's own role
-        subscribeSelector(s => s.activeNightRole, () => {
-            this.updateNightView();
-        })
-
-        subscribeSelector(s => s.role, () => {
-            this.updateNightView();
-        })
+        subscribeSelector(s => s.activeNightRole, () => this.updateNightView());
+        subscribeSelector(s => s.role, () => this.updateNightView());
+        subscribeSelector(s => s.lovePartnerUUID, () => this.updateNightView());
 
         // Initial render
         this.updateNightView();
@@ -70,12 +67,13 @@ export class NightPhase implements View {
         }
 
         // 3. Logic: Who gets to see the Action UI?
-        // It's my turn (activeRole == myRole)
+        // It's my turn (activeRole == myRole) OR it's Cupid turn and I am a lover
         const isMyTurn = (activeRole && activeRole === ownRole);
+        const isCupidTurnForLover = (activeRole === Role.CUPID && state.lovePartnerUUID !== null);
 
-        if (isMyTurn) {
+        if (isMyTurn || isCupidTurnForLover) {
             if (actionContainer) actionContainer.style.display = 'block';
-            this.renderActionUI(activeRole);
+            this.renderActionUI(activeRole as Role);
         } else {
             if (sleepView) sleepView.style.display = 'block';
         }
@@ -104,6 +102,11 @@ export class NightPhase implements View {
         } else if (role === Role.WITCH) {
             if (!(this.currentSubView instanceof WitchPhase)) {
                 this.currentSubView = new WitchPhase();
+                this.currentSubView.mount(actionContainer);
+            }
+        } else if (role === Role.CUPID) {
+            if (!(this.currentSubView instanceof CupidPhase)) {
+                this.currentSubView = new CupidPhase();
                 this.currentSubView.mount(actionContainer);
             }
         } else {

@@ -1,0 +1,49 @@
+<div class="cupid-action-container">
+    
+    <!-- STATE 1: CUPID SELECTION -->
+    <div id="cupid-selection-view" style="display: none;">
+        <div class="pixel-card">
+            <h3>Cupid's Arrow</h3>
+            <p class="fog-text">Choose two souls to bind in eternal love...</p>
+            <p id="cupid-selection-count" class="highlight-text" style="text-align: center; margin-top: 10px;">0 / 2 Selected</p>
+        </div>
+
+        <div class="player-selection-list">
+            <ul id="cupid-target-list" class="pixel-list">
+                <!-- Players will be injected here -->
+            </ul>
+        </div>
+
+        <div class="manager-controls">
+            <button id="confirm-cupid-target-btn" class="btn btn-primary full-width" disabled>
+                Shoot Arrows
+            </button>
+        </div>
+    </div>
+
+    <!-- STATE 2: LOVERS AWAKENING -->
+    <div id="lovers-view" style="display: none;">
+        <div class="pixel-card" style="text-align: center;">
+            <h3>Eternal Love</h3>
+            <div class="role-image-container" style="margin: 20px auto;">
+                <img src="/CUPID.png" alt="Cupid" class="pixel-art-image" style="max-width: 100px;">
+            </div>
+            <p class="fog-text">You have been struck by Cupid's arrow!</p>
+            <p class="fog-text">You are now in love with:</p>
+            <h2 id="partner-name" class="highlight-text" style="margin: 20px 0;">...</h2>
+            <p class="fog-text" style="font-size: 0.9rem;">If one of you dies, the other will follow.</p>
+        </div>
+
+        <div class="manager-controls">
+            <button id="confirm-love-btn" class="btn btn-primary full-width">
+                I accept my fate
+            </button>
+        </div>
+    </div>
+
+    <!-- WAITING STATE -->
+    <div id="cupid-waiting-message" class="waiting-message" style="display: none;">
+        <p class="fog-text" id="cupid-wait-text">Waiting for love to blossom...</p>
+    </div>
+
+</div>

@@ -12,9 +12,10 @@ export interface Player {
     isAlive: boolean,
     isSheriff: boolean,
     lovePartner: string | null,
+    lovePartnerConfirmed: boolean,
     usedHealingPotion: boolean,
     usedKillingPotion: boolean,
-    readyForNight: boolean;
+    readyForNight: boolean
 }
 
 export interface Game {

@@ -74,7 +74,7 @@ io.on('connection', (socket) => {
   // CUPID
   socket.on('makeLove', handleErrors(({gameId, firstPlayerUUID, secondPlayerUUID}) => gameManager.nightAction(gameId, socket.id, Role.CUPID, CupidHandler.handleMakeLove, firstPlayerUUID, secondPlayerUUID)));
   // for going to next role
-  // socket.on('lovePartnerConfirms')
+  socket.on('lovePartnerConfirms', handleErrors(({gameId}) => gameManager.nightAction(gameId, socket.id, null, CupidHandler.handleLovePartnerConfirms)));
 
   // WITCH
   socket.on('spellPotion', handleErrors(({gameId, heal, killUUID}) => gameManager.nightAction(gameId, socket.id, Role.WITCH, WitchHandler.handlePotion, heal, killUUID)));

@@ -109,6 +109,16 @@ class SocketService {
         this.socket?.emit('witchConfirms', { gameId });
     }
 
+    public makeLove(firstPlayerUUID: string, secondPlayerUUID: string) {
+        const gameId = getState().gameId;
+        this.socket?.emit('makeLove', { gameId, firstPlayerUUID, secondPlayerUUID });
+    }
+
+    public lovePartnerConfirms() {
+        const gameId = getState().gameId;
+        this.socket?.emit('lovePartnerConfirms', { gameId });
+    }
+
     // --- Listeners (Dispatch to Store/Router) ---
 
     private setupListeners() {
@@ -181,6 +191,11 @@ class SocketService {
         this.socket.on('witchData', (data: {victimUUID: string | null, usedHealingPotion: boolean, usedKillingPotion: boolean}) => {
             setState({witchData: data});
         })
+
+        this.socket.on('lovePartner', (data: { partnerUUID: string}) => {
+            setState({lovePartnerUUID: data.partnerUUID});
+        });
+
 
     }
 }
