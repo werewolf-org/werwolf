@@ -76,6 +76,9 @@ export class AudioService {
      * Set the looping background atmosphere from /sounds/*.mp3
      */
     public setAtmosphere(fileName: string): void {
+        const state = getState();
+        if (!state.isManager) return;
+
         const path = `/sounds/${fileName}.mp3`;
         if (this.atmosphereAudio.src.includes(path)) return;
 
@@ -85,11 +88,18 @@ export class AudioService {
 
     /**
      * Play a one-off sound effect from /sounds/*.mp3
+     * @param fileName Name without extension
+     * @param managerOnly If true, only plays on the Game Manager's device. Defaults to false.
      */
-    public playSFX(fileName: string): void {
+    public playSFX(fileName: string, managerOnly: boolean = false): void {
+        if (managerOnly) {
+            const state = getState();
+            if (!state.isManager) return;
+        }
+
         const sfx = new Audio(`/sounds/${fileName}.mp3`);
         sfx.volume = 0.8;
-        sfx.play();
+        sfx.play().catch(e => console.warn("SFX autoplay blocked:", e));
     }
 
     private processQueue(): void {

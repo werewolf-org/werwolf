@@ -58,7 +58,7 @@ export class SeerPhase implements View {
         const roleNameEl = document.getElementById('reveal-role-name');
         const playerNameEl = document.getElementById('reveal-player-name');
 
-        if (imgEl) imgEl.src = `/${reveal.role.toUpperCase()}.png`;
+        if (imgEl) imgEl.src = `/icons/${reveal.role.toUpperCase()}.png`;
         if (roleNameEl) roleNameEl.innerText = roleDef?.displayName || reveal.role;
         if (playerNameEl) playerNameEl.innerText = `${targetName} is...`;
     }

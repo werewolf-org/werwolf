@@ -2,7 +2,6 @@ import type { View } from '../../router';
 import witchHtml from './witch.html?raw';
 import { getState, setState, subscribeSelector } from '../../store';
 import { socketService } from '../../socket.service';
-import { audioService } from '../../audio.service';
 
 export class WitchPhase implements View {
     private container: HTMLElement | null = null;
@@ -12,8 +11,6 @@ export class WitchPhase implements View {
         this.container = container;
         this.container.innerHTML = witchHtml;
         
-        audioService.playNarration('witch_wakes')
-
         subscribeSelector(s => s.witchData, () => {
             this.renderWitchView();
         });

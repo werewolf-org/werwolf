@@ -108,7 +108,7 @@ export class GameManager {
         if(!playerWithID) throw new Error(`Player with UUID ${playerUUID} not found in Game`);
         playerWithID.displayName = playerName;
         this.broadcastPlayerUpdate(game);
-        console.log(`Player ${playerUUID} changed name to ${playerName}`)!
+        console.log(`Player ${playerUUID} changed name to ${playerName}`)
         this.store.updateGame(game);
     }
 
@@ -141,6 +141,11 @@ export class GameManager {
         if(!game) throw new Error(`Game with ID ${gameId} not found!`)
         if(game.phase !== Phase.ROLE_SELECTION) throw new Error(`Game ${gameId} is currently not in phase ROLE_SELECTION, so Distribution cannot start!`);
         if(game.players === undefined) throw new Error(`No players are defined in game ${gameId}`);
+
+        const totalRoles = Object.values(roles).reduce((sum, count) => sum + (count as number), 0);
+        if (totalRoles !== game.players.length) {
+            throw new Error(`Total roles assigned (${totalRoles}) does not match number of players (${game.players.length})`);
+        }
 
         const shuffledPlayerIndices: number[] = this.shuffledIndices(game.players.length);
 
