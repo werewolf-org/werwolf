@@ -62,6 +62,10 @@ export class SocketService {
         this.emitToPlayer(socketId, 'joinedGame', data);
     }
 
+    public notifyPlayerRejoined(socketId: string, data: { gameId: string, playerUUID: string, isManager: boolean, role: Role | null, phase: Phase, activeNightRole: Role | null, displayName: string, lovePartnerUUID: string | null, players: any[], voteResults: Record<string, string | null> | null, votedOutUUID: string | null}) {
+        this.emitToPlayer(socketId, 'rejoinedGame', data);
+    };
+
     public notifyPlayerUpdate(gameId: string, players: any[]) {
         this.emitToRoom(gameId, 'updatePlayers', { players });
     }

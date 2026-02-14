@@ -37,6 +37,7 @@ export const nextRole = (game: Game) => {
         // End of Night -> Start Day
         game.activeNightRole = null;
         game.phase = Phase.DAY;
+        game.lynchResults = null;
 
         resolveNightActions(game);
 
@@ -162,6 +163,7 @@ export const SeerHandler = {
         if(!playerToSee) throw new Error(`Player with UUID ${revealUUID} not found, cannot see this players role`);
         if(!playerToSee.role) throw new Error(`Player with UUID ${revealUUID} does not have a role`);
         if(player.socketId) socketService.notifySeerResult(player.socketId, revealUUID, playerToSee.role);
+        player.nightAction = { revealUUID: revealUUID, role: playerToSee.role };
     },
     handleConfirm(game: Game) {
         nextRole(game);
@@ -184,6 +186,7 @@ export const CupidHandler = {
         if(gameManager && gameManager.socketId) socketService.notifyNewCouple(gameManager.socketId);
         if(firstPlayerInLove.socketId) socketService.notifyLovePartner(firstPlayerInLove.socketId, secondPlayerUUID);
         if(secondPlayerInLove.socketId) socketService.notifyLovePartner(secondPlayerInLove.socketId, firstPlayerUUID);
+        player.nightAction = { firstPlayerUUID: firstPlayerUUID, secondPlayerUUID: secondPlayerUUID };
     },
     // * WARNING: here the player is not the cupid but the love partner
     handleLoverConfirmsBond(game: Game, player: Player) {

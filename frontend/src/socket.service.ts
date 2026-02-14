@@ -1,5 +1,5 @@
 import { io, Socket } from 'socket.io-client';
-import { getState, setState } from './store';
+import { getState, resetState, setState } from './store';
 import { navigate } from './router';
 import { Phase } from '@shared/models';
 import { Role } from '@shared/roles';
@@ -150,6 +150,7 @@ class SocketService {
 
         this.socket.on('joinedGame', (data: { gameId: string, playerUUID: string, isManager: boolean, activeNightRole: Role | null }) => {
             localStorage.setItem('playerUUID', data.playerUUID);
+            resetState();
             setState({
                 gameId: data.gameId, 
                 playerUUID: data.playerUUID,
@@ -162,6 +163,11 @@ class SocketService {
                 activeNightRole: data.activeNightRole,
             });
         });
+
+        this.socket.on('rejoinedGame', (data: { gameId: string, playerUUID: string, isManager: boolean, role: Role | null, phase: Phase, activeNightRole: Role | null, displayName: string, lovePartnerUUID: string | null, players: [], voteResults: Record<string, string | null> | null, votedOutUUID: string | null}) => {
+            console.log('rejoin ', data)
+            setState(data);
+        })
 
         this.socket.on('roleAssigned', (data: { role: Role }) => {
             setState({phase: Phase.DISTRIBUTION, role: data.role})

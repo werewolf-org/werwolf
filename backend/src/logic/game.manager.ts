@@ -23,7 +23,8 @@ export class GameManager {
             players: [],
             round: 0,
             phase: Phase.LOBBY,
-            activeNightRole: null
+            activeNightRole: null,
+            lynchResults: null
         }
 
         socketService.notifyGameCreated(socketId, gameId);
@@ -81,12 +82,34 @@ export class GameManager {
     }
 
 
-    private rejoinGame(gameId: string, playerUUID: string | null, socketId: string): void {
+    private rejoinGame(gameId: string, playerUUID: string, socketId: string): void {
         const game = this.store.getGame(gameId);
-        if(!game) throw new Error(`Game with ID ${gameId} not found!`)
+        if(!game) throw new Error(`Game with ID ${gameId} not found!`);
         const playerWithID = game.players.find((player) => player.playerUUID == playerUUID);
         if(!playerWithID) throw new Error(`Player with UUID ${playerUUID} not found in Game`);
         playerWithID.socketId = socketId;
+
+        const playerList = game.players.map(p => ({
+            playerUUID: p.playerUUID,
+            displayName: p.displayName,
+            isAlive: p.isAlive,
+            role: p.isAlive ? null : p.role
+        }));
+        socketService.notifyPlayerRejoined(socketId, {
+            gameId: game.gameId,
+            playerUUID: playerUUID,
+
+            isManager: playerWithID.playerUUID === game.managerUUID,
+            displayName: playerWithID.displayName,
+            role: playerWithID.role,
+            lovePartnerUUID: playerWithID.lovePartner,
+            phase: game.phase,
+            activeNightRole: game.activeNightRole,
+            players: playerList,
+
+            voteResults: game.lynchResults?.voteResults ?? null,
+            votedOutUUID: game.lynchResults?.votedOutUUID ?? null
+        });
         this.store.updateGame(game);
     }
 
@@ -300,6 +323,7 @@ export class GameManager {
         // reset votes
         game.players.forEach((player) => player.voteTargetUUID = null);
 
+        game.lynchResults = {voteResults: voteRecord, votedOutUUID: electedPlayer?.playerUUID ?? null};
         socketService.notifyVotingResolved(game.gameId, electedPlayer?.playerUUID ?? null, voteRecord);
 
         // turn to night

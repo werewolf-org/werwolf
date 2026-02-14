@@ -1,4 +1,4 @@
-import { Role} from '@shared/roles.js'
+import { Role } from '@shared/roles.js'
 import { Phase } from '@shared/models.js';
 
 export interface Player {
@@ -24,5 +24,20 @@ export interface Game {
     round: number,
     phase: Phase,
     activeNightRole: Role | null,
-    // TODO: define night Actions
+
+
+
+    lynchResults: {voteResults: Record<string, string | null> , votedOutUUID: string | null} | null;
 }
+
+// aggregated state
+// voteResults: Record<string, string | null> | null
+// votedOutUUID: string | null
+// -> aggregated from Player.voteTargetUUID
+
+// werewolfVotes: Record<string, string> | null
+// werewolfVictim: string | null
+// -> aggregated from Player.nightAction
+
+// redLadySleepoverUUID: string | null
+// -> aggregated from Player.nightAction

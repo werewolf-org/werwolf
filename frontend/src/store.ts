@@ -10,22 +10,22 @@ export interface Player {
 }
 
 interface AppState {
-    // persistent (stored in storage)
-    gameId: string | null,
-    playerUUID: string | null,
-    
-    // non-persistent
     isConnected: boolean,
-    isManager: boolean,
-    displayName: string | null,
-    role: Role | null,
-    lovePartnerUUID: string | null,
+
+    // global
+    gameId: string | null,
     phase: Phase| null,
     activeNightRole: Role | null,
-    
     players: Player[];
     
-    // player & game specific
+    // private
+    playerUUID: string | null,
+    displayName: string | null,
+    isManager: boolean,
+    role: Role | null,
+    lovePartnerUUID: string | null,
+    
+    // phase & turn specific
     seerReveal: { playerUUID: string, role: Role } | null;
     witchData: { victimUUID: string | null, usedHealingPotion: boolean, usedKillingPotion: boolean } | null;
 
@@ -87,7 +87,7 @@ export function subscribeSelector<T>(
     });
 }
 
-export function resetGame(): void {
+export function resetState(): void {
     Object.assign(state, {
         playerUUID: localStorage.getItem('playerUUID') ?? null,
 

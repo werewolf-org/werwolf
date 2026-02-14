@@ -1,6 +1,6 @@
 import gameHtml from './game.html?raw';
 import type { View } from '../router';
-import { subscribeSelector, getState, resetGame } from '../store';
+import { subscribeSelector, getState, resetState } from '../store';
 import { Phase } from '@shared/models.js';
 import { LobbyPhase } from './phases/lobby';
 import { PlaceholderPhase } from './phases/placeholder';
@@ -29,7 +29,7 @@ export class GamePage implements View {
         this.phaseContainer = document.getElementById('phase-view-container');
         
         // cleanup state
-        resetGame();
+        resetState();
 
         console.log('joining or re-joining...');
         socketService.joinGame(this.gameId, getState().playerUUID ?? null);
