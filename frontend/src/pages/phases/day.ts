@@ -2,12 +2,10 @@ import type { View } from '../../router';
 import dayHtml from './day.html?raw';
 import { getState, subscribeSelector } from '../../store';
 import { socketService } from '../../socket.service';
-import { Role, ROLES } from '@shared/roles.js';
 
 export class DayPhase implements View {
     private container: HTMLElement | null = null;
     private selectedTargetUUID: string | null = null;
-    private knownDeadUUIDs: Set<string> = new Set();
 
     mount(container: HTMLElement): void {
         this.container = container;
@@ -16,18 +14,11 @@ export class DayPhase implements View {
         // Switch to Light Mode for Day
         document.body.classList.add('light-mode');
 
-        // Initialize known deaths
-        const initialState = getState();
-        initialState.players.forEach(p => {
-            if (!p.isAlive) this.knownDeadUUIDs.add(p.playerUUID);
-        });
-
         // Reactive Subscriptions
         subscribeSelector(s => s.lynchDone, () => this.updateUI());
         subscribeSelector(s => s.myVoteTargetUUID, () => this.updateUI());
         subscribeSelector(s => s.readyForNight, () => this.updateUI());
-        subscribeSelector(s => s.players, (players) => {
-            this.checkForNewDeaths(players);
+        subscribeSelector(s => s.players, () => {
             this.updateUI();
         });
 
@@ -52,14 +43,6 @@ export class DayPhase implements View {
             readyBtn.addEventListener('click', () => {
                 socketService.readyForNight();
             });
-        }
-
-        const closePopupBtn = document.getElementById('close-death-popup');
-        if (closePopupBtn) {
-            closePopupBtn.onclick = () => {
-                const popup = document.getElementById('death-popup-overlay');
-                if (popup) popup.style.display = 'none';
-            };
         }
     }
 
@@ -226,34 +209,7 @@ export class DayPhase implements View {
                     </div>
                 </li>
             `;
-        }).join('');
-    }
-
-    private checkForNewDeaths(players: any[]) {
-        const newlyDead = players.filter(p => !p.isAlive && !this.knownDeadUUIDs.has(p.playerUUID));
-        if (newlyDead.length > 0) {
-            newlyDead.forEach(p => this.knownDeadUUIDs.add(p.playerUUID));
-            this.renderNewDeaths(newlyDead);
+                    }).join('');
+            }
         }
-    }
-
-    private renderNewDeaths(newlyDead: any[]) {
-        const popup = document.getElementById('death-popup-overlay');
-        const listEl = document.getElementById('newly-dead-list');
-        if (!popup || !listEl) return;
-
-        const state = getState();
-
-        listEl.innerHTML = newlyDead.map(p => {
-            const roleName = p.role ? ROLES[p.role as Role].displayName : 'Unknown';
-            return `
-                <li class="pixel-list-item" style="justify-content: space-between;">
-                    <span class="highlight-text" style="font-family: 'Press Start 2P'; font-size: 0.7rem;">${state.players.find((player) => player.playerUUID === p.playerUUID)?.displayName}</span>
-                    <span class="fog-text" style="font-size: 1.2rem;">${roleName}</span>
-                </li>
-            `;
-        }).join('');
-
-        popup.style.display = 'flex';
-    }
-}
+        

@@ -10,11 +10,13 @@ import { RoleDistributionPhase } from './phases/role-distribution';
 import { NightPhase } from './phases/night';
 import { DayPhase } from './phases/day';
 import { audioService } from '../audio.service';
+import { ROLES, Role } from '@shared/roles.js';
 
 export class GamePage implements View {
     private gameId: string;
     private container: HTMLElement | null = null;
     private phaseContainer: HTMLElement | null = null;
+    private knownDeadUUIDs: Set<string> = new Set();
     
     // Track the current sub-view
     private currentPhaseView: View | null = null;
@@ -37,9 +39,59 @@ export class GamePage implements View {
 
         console.log(`GamePage mounted for ${this.gameId}`);
 
+        // Initialize known dead players
+        const initialState = getState();
+        initialState.players.forEach(p => {
+            if (!p.isAlive) this.knownDeadUUIDs.add(p.playerUUID);
+        });
+
         subscribeSelector(s => s.phase, (phase) => {
             if (phase) this.renderPhase(phase);
-        })
+        });
+
+        // Global death tracking
+        subscribeSelector(s => s.players, (players) => {
+            this.checkForNewDeaths(players);
+        });
+
+        // Setup close button for global popup
+        const closeBtn = document.getElementById('close-death-popup');
+        if (closeBtn) {
+            closeBtn.onclick = () => {
+                const overlay = document.getElementById('death-popup-overlay');
+                if (overlay) overlay.style.display = 'none';
+            };
+        }
+    }
+
+    private checkForNewDeaths(players: any[]) {
+        const newlyDead = players.filter(p => !p.isAlive && !this.knownDeadUUIDs.has(p.playerUUID));
+        if (newlyDead.length > 0) {
+            newlyDead.forEach(p => this.knownDeadUUIDs.add(p.playerUUID));
+            this.renderNewDeaths(newlyDead);
+        }
+    }
+
+    private renderNewDeaths(newlyDead: any[]) {
+        const overlay = document.getElementById('death-popup-overlay');
+        const listEl = document.getElementById('newly-dead-list');
+        if (!overlay || !listEl) return;
+
+        const allPlayers = getState().players;
+
+        listEl.innerHTML = newlyDead.map(p => {
+            const roleName = p.role ? ROLES[p.role as Role].displayName : 'Unknown';
+            return `
+                <li class="pixel-list-item" style="justify-content: space-between;">
+                    <span class="highlight-text" style="font-family: 'Press Start 2P'; font-size: 0.7rem;">
+                        ${allPlayers.find((player) => player.playerUUID == p.playerUUID)?.displayName}
+                    </span>
+                    <span class="fog-text" style="font-size: 1.2rem;">${roleName}</span>
+                </li>
+            `;
+        }).join('');
+
+        overlay.style.display = 'flex';
     }
 
     private renderPhase(phase: Phase): void {

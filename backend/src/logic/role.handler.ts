@@ -34,14 +34,6 @@ export const nextRole = (game: Game) => {
 
         resolveNightActions(game);
 
-        // TODO Refactor: use logic of game.manager here (broadcastPlayerUpdate()) (DUPLICATE LOGIC)
-        const playerList = game.players.map(p => ({
-            playerUUID: p.playerUUID,
-            displayName: p.displayName,
-            isAlive: p.isAlive,
-            role: p.isAlive ? null : p.role
-        }));
-
         game.players.forEach((player) => player.nightAction = null);
     }
 };
