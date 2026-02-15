@@ -19,6 +19,7 @@ export class RedLadyPhase implements View {
         if (confirmBtn) {
             confirmBtn.addEventListener('click', () => {
                 if (this.selectedTargetUUID) {
+                    console.log('sleepover at: ', this.selectedTargetUUID);
                     socketService.sleepOver(this.selectedTargetUUID);
                 }
             });

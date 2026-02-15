@@ -170,7 +170,7 @@ export class DayPhase implements View {
         const lynchTextEl = document.getElementById('lynch-result-text');
         
         if (lynchedUUID) {
-            if (lynchedNameEl) lynchedNameEl.innerText = state.players.find((player) => player.playerUUID == lynchedUUID)?.displayName ?? 'No One';
+            if (lynchedNameEl) lynchedNameEl.innerText = players.find((player) => player.playerUUID == lynchedUUID)?.displayName ?? 'No One';
             if (lynchTextEl) lynchTextEl.innerText = '...was sent to the gallows.';
         } else {
             if (lynchedNameEl) {

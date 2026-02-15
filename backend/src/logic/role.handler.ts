@@ -29,7 +29,6 @@ export const nextRole = (game: Game) => {
         // End of Night -> Start Day
         game.activeNightRole = null;
         game.lynchDone = false;
-        game.players.forEach((player) => player.voteTargetUUID = null);
         game.phase = Phase.DAY;
 
         resolveNightActions(game);

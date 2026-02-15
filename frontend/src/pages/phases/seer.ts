@@ -110,7 +110,7 @@ export class SeerPhase implements View {
             return `
                 <li class="pixel-list-item selectable-player ${isSelected ? 'selected' : ''}" data-uuid="${p.playerUUID}">
                     <span class="player-dot alive"></span>
-                    <span class="player-name">${state.players.find((player) => player.playerUUID = p.playerUUID)?.displayName}</span>
+                    <span class="player-name">${p.displayName}</span>
                 </li>
             `;
         }).join('');

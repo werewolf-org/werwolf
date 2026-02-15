@@ -384,6 +384,8 @@ export class GameManager {
             game.round = game.round + 1;
             game.phase = Phase.NIGHT;
             game.activeNightRole = this.getFirstToWakeUp(game);
+            game.players.forEach((player) => player.voteTargetUUID = null);
+            game.lynchDone = false;
             if(!game.activeNightRole) throw new Error(`Game with ID ${gameId} cannot go to Night, no first night role`)
             game.players.forEach((player) => player.readyForNight = false);
         }

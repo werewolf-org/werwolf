@@ -17,6 +17,7 @@ export class GamePage implements View {
     private container: HTMLElement | null = null;
     private phaseContainer: HTMLElement | null = null;
     private knownDeadUUIDs: Set<string> = new Set();
+    private deathsInitialized: boolean = false;
     
     // Track the current sub-view
     private currentPhaseView: View | null = null;
@@ -33,17 +34,13 @@ export class GamePage implements View {
         
         // cleanup state
         resetState();
+        this.deathsInitialized = false;
+        this.knownDeadUUIDs.clear();
 
         console.log(`joining or re-joining (with playerUUID: ${getState().playerUUID}) ...`);
         socketService.joinGame(this.gameId, getState().playerUUID ?? null);
 
         console.log(`GamePage mounted for ${this.gameId}`);
-
-        // Initialize known dead players
-        const initialState = getState();
-        initialState.players.forEach(p => {
-            if (!p.isAlive) this.knownDeadUUIDs.add(p.playerUUID);
-        });
 
         subscribeSelector(s => s.phase, (phase) => {
             if (phase) this.renderPhase(phase);
@@ -51,6 +48,17 @@ export class GamePage implements View {
 
         // Global death tracking
         subscribeSelector(s => s.players, (players) => {
+            if (players.length === 0) return;
+
+            // On first sync after join/rejoin, just mark currently dead players as "known"
+            if (!this.deathsInitialized) {
+                players.forEach(p => {
+                    if (!p.isAlive) this.knownDeadUUIDs.add(p.playerUUID);
+                });
+                this.deathsInitialized = true;
+                return;
+            }
+
             this.checkForNewDeaths(players);
         });
 
@@ -77,14 +85,12 @@ export class GamePage implements View {
         const listEl = document.getElementById('newly-dead-list');
         if (!overlay || !listEl) return;
 
-        const allPlayers = getState().players;
-
         listEl.innerHTML = newlyDead.map(p => {
             const roleName = p.role ? ROLES[p.role as Role].displayName : 'Unknown';
             return `
                 <li class="pixel-list-item" style="justify-content: space-between;">
                     <span class="highlight-text" style="font-family: 'Press Start 2P'; font-size: 0.7rem;">
-                        ${allPlayers.find((player) => player.playerUUID == p.playerUUID)?.displayName}
+                        ${p.displayName}
                     </span>
                     <span class="fog-text" style="font-size: 1.2rem;">${roleName}</span>
                 </li>
