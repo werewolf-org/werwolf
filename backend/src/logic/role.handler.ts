@@ -1,7 +1,6 @@
 import { Role, ROLES } from "@shared/roles.js";
 import { type Game, type Player } from "../models.js";
-import { Phase } from "@shared/models.js";
-import { socketService } from "../socket.service.js";
+import { Phase } from "@shared/phases.js";
 
 export const nextRole = (game: Game) => {
     const rolesInGame = new Set(game.players.filter(p => p.isAlive).map(p => p.role));
@@ -26,18 +25,12 @@ export const nextRole = (game: Game) => {
     if (nextActiveRole) {
         // Advance to the next role
         game.activeNightRole = nextActiveRole;
-        socketService.notifyNextActiveRole(game.gameId, nextActiveRole);
-
-        // emit new data for roles to frontend
-        switch(nextActiveRole) {
-            case Role.WITCH: WitchHandler.handlePhaseInit(game); break;
-            default: break;
-        }
     } else {
         // End of Night -> Start Day
         game.activeNightRole = null;
+        game.lynchDone = false;
+        game.players.forEach((player) => player.voteTargetUUID = null);
         game.phase = Phase.DAY;
-        game.lynchResults = null;
 
         resolveNightActions(game);
 
@@ -50,8 +43,6 @@ export const nextRole = (game: Game) => {
         }));
 
         game.players.forEach((player) => player.nightAction = null);
-        socketService.notifyPhaseUpdate(game.gameId, Phase.DAY);
-        socketService.notifyPlayerUpdate(game.gameId, playerList);
     }
 };
 
@@ -79,10 +70,23 @@ export const getMostVotes = (votes: string[]): string[] => {
 
 export const getWerewolfVictimUUID = (game: Game) => {
     const aliveWerewolves = game.players.filter((players) => players.isAlive == true && players.role === Role.WEREWOLF);
+    if(aliveWerewolves.find((werewolf) => !werewolf.nightAction)) return null;
     const werewolfVotes = aliveWerewolves.map((werewolf) => (werewolf.nightAction as Record<string, any>).targetUUID ?? '');
     const mostVoted = getMostVotes(werewolfVotes);
     const werewolfTargetUUID: string | null = (mostVoted.length === 1 && mostVoted[0] && mostVoted[0] != '') ? mostVoted[0] : null;
     return werewolfTargetUUID;
+}
+
+export const getWerewolfVotes = (game: Game): Record<string, string> | null => {
+  const votes = game.players
+    .filter(p => p.isAlive && p.role === Role.WEREWOLF && p.nightAction)
+    .reduce((acc, werewolf) => {
+      const werewolfId = werewolf.playerUUID;
+      const targetUUID = (werewolf.nightAction as Record<string, any>)?.targetUUID;
+      if (werewolfId && targetUUID) acc[werewolfId] = targetUUID;
+      return acc
+    }, {} as Record<string, string>)
+  return Object.keys(votes).length > 0 ? votes : null
 }
 
 export const resolveNightActions = (game: Game) => {
@@ -144,7 +148,6 @@ export const WerewolfHandler = {
         const aliveWerewolves = game.players.filter((player) => player.isAlive === true && player.role === Role.WEREWOLF)
         aliveWerewolves.forEach((werewolfPlayer) => {
             if(!werewolfPlayer.socketId) throw new Error(`Player ${player.playerUUID} does not have a socketId`);
-            socketService.notifyWerewolfVote(werewolfPlayer.socketId, targetUUID);
         })
         player.nightAction = { targetUUID: targetUUID };
 
@@ -162,8 +165,7 @@ export const SeerHandler = {
         const playerToSee = game.players.find((player) => player.playerUUID === revealUUID);
         if(!playerToSee) throw new Error(`Player with UUID ${revealUUID} not found, cannot see this players role`);
         if(!playerToSee.role) throw new Error(`Player with UUID ${revealUUID} does not have a role`);
-        if(player.socketId) socketService.notifySeerResult(player.socketId, revealUUID, playerToSee.role);
-        player.nightAction = { revealUUID: revealUUID, role: playerToSee.role };
+        player.nightAction = { revealUUID: revealUUID, revealedRole: playerToSee.role };
     },
     handleConfirm(game: Game) {
         nextRole(game);
@@ -181,11 +183,6 @@ export const CupidHandler = {
         firstPlayerInLove.lovePartner = secondPlayerInLove.playerUUID;
         secondPlayerInLove.lovePartner = firstPlayerInLove.playerUUID;
         
-        const gameManager = game.players.find((player) => player.playerUUID == game.managerUUID);
-        // only for playing sounds
-        if(gameManager && gameManager.socketId) socketService.notifyNewCouple(gameManager.socketId);
-        if(firstPlayerInLove.socketId) socketService.notifyLovePartner(firstPlayerInLove.socketId, secondPlayerUUID);
-        if(secondPlayerInLove.socketId) socketService.notifyLovePartner(secondPlayerInLove.socketId, firstPlayerUUID);
         player.nightAction = { firstPlayerUUID: firstPlayerUUID, secondPlayerUUID: secondPlayerUUID };
     },
     // * WARNING: here the player is not the cupid but the love partner
@@ -199,16 +196,8 @@ export const CupidHandler = {
 }
 
 export const WitchHandler = {
-    handlePhaseInit(game: Game) {
-        const victimUUID: string | null = getWerewolfVictimUUID(game);
-        const witches = game.players.filter((player) => player.role === Role.WITCH);
-        witches.forEach((witch) => {
-            if(witch.socketId) socketService.notifyWitchData(witch.socketId, victimUUID, witch.usedHealingPotion, witch.usedKillingPotion);
-        });
-    },
     handlePotion(game: Game, player: Player, heal: boolean | null, killUUID: string | null) {
         if(!heal && !killUUID) throw new Error(`Witch with ID ${player.playerUUID} didn't use a Potion`)
-        const victimUUID: string | null = getWerewolfVictimUUID(game);
 
         if(heal) {
             if(player.usedHealingPotion) throw new Error(`Witch in Game ${game.gameId} already used healing potion`);
@@ -222,8 +211,6 @@ export const WitchHandler = {
             else player.nightAction = {...player.nightAction, killUUID: killUUID }
             player.usedKillingPotion = true;
         }
-        if(player.socketId) socketService.notifyWitchData(player.socketId, victimUUID, player.usedHealingPotion, player.usedKillingPotion);
-        // if(player.socketId) socketService.notifyWitchPotionSucess(player.socketId);
     },
     handleConfirm(game: Game, player: Player) {
         nextRole(game);

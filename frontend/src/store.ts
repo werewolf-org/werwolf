@@ -1,67 +1,102 @@
 import { Role} from '@shared/roles.js'
-import { Phase } from '@shared/models.js';
+import { Phase } from '@shared/phases';
 
-export interface Player {
+export interface LocalPlayerModel {
     playerUUID: string, 
     displayName: string,
     isAlive: boolean,
-    isSherriff: boolean,
+    isSheriff: boolean,
     role: Role | null,
 }
 
-interface AppState {
+export interface LocalAppState {
     isConnected: boolean,
 
-    // global
+    // global (game model mirror)
     gameId: string | null,
+
     phase: Phase| null,
     activeNightRole: Role | null,
-    players: Player[];
+    players: LocalPlayerModel[];
     
-    // private
+    // private (game model mirror)
     playerUUID: string | null,
     displayName: string | null,
     isManager: boolean,
     role: Role | null,
     lovePartnerUUID: string | null,
+    lovePartnerConfirmed: boolean,
+    readyForNight: boolean,
+    myVoteTargetUUID: string | null,
+    lynchDone: boolean,
     
-    // phase & turn specific
-    seerReveal: { playerUUID: string, role: Role } | null;
-    witchData: { victimUUID: string | null, usedHealingPotion: boolean, usedKillingPotion: boolean } | null;
-
+    // aggregated state (from game model)
     voteResults: Record<string, string | null> | null;
     votedOutUUID: string | null;
+
+    werewolfVotes: Record<string, string> | null;
+    werewolfVictim: string | null;
+
+    witchUsedHealingPotion: boolean;
+    witchUsedKillingPotion: boolean;
+
+    redLadySleepoverUUID: string | null;
+
+    seerRevealUUID: string | null;
+    seerRevealRole: Role | null;
+
+    cupidFirstLoverUUID: string | null;
+    cupidSecondLoverUUID: string | null;
+
+    cupidFirstLoverConfirmed: boolean;
+    cupidSecondLoverConfirmed: boolean;
+
 }
 
-const state: AppState = {
+const state: LocalAppState = {
+    isConnected: false,
+    
     gameId: null,
     playerUUID: localStorage.getItem('playerUUID') ?? null,
 
-    isConnected: false,
-    isManager: false,
-    displayName: null,
-    lovePartnerUUID: null,
-    role: null,
     phase: null,
     activeNightRole: null,
-
     players: [],
 
-    seerReveal: null,
-    witchData: null,
+    displayName: null,
+    isManager: false,
+    role: null,
+    lovePartnerUUID: null,
+    lovePartnerConfirmed: false,
+    readyForNight: false,
+    myVoteTargetUUID: null,
+    lynchDone: false,
+
     voteResults: null,
     votedOutUUID: null,
+    werewolfVotes: null,
+    werewolfVictim: null,
+    witchUsedHealingPotion: false,
+    witchUsedKillingPotion: false,
+    redLadySleepoverUUID: null,
+    seerRevealUUID: null,
+    seerRevealRole: null,
+    cupidFirstLoverUUID: null,
+    cupidSecondLoverUUID: null,
+    cupidFirstLoverConfirmed: false,
+    cupidSecondLoverConfirmed: false,
+
 };
 
 
-type Listener = (state: AppState) => void;
+type Listener = (state: LocalAppState) => void;
 const listeners = new Set<Listener>();
 
-export function getState(): Readonly<AppState> {
+export function getState(): Readonly<LocalAppState> {
     return Object.freeze({ ...state });
 }
 
-export function setState(patch: Partial<AppState>): void {
+export function setState(patch: Partial<LocalAppState>): void {
     Object.assign(state, patch);
     const updatedState = getState();
     listeners.forEach((fn) => fn(updatedState));
@@ -74,7 +109,7 @@ export function subscribe(fn: Listener): () => void {
 
 // Subscribe to a specific part of the state. 
 export function subscribeSelector<T>(
-    selector: (state: AppState) => T,
+    selector: (state: LocalAppState) => T,
     fn: (value: T) => void
 ): () => void {
     let lastValue = selector(state);
@@ -92,15 +127,33 @@ export function resetState(): void {
         playerUUID: localStorage.getItem('playerUUID') ?? null,
 
         isConnected: false,
-        isManager: false,
-        displayName: null,
-        lovePartnerUUID: null,
-        role: null,
+
         phase: null,
         activeNightRole: null,
-        round: 0,
-
         players: [],
-        seerReveal: null,
+
+        displayName: null,
+        isManager: false,
+        role: null,
+        lovePartnerUUID: null,
+        lovePartnerConfirmed: false,
+        readyForNight: false,
+        myVoteTargetUUID: null,
+        lynchDone: false,
+
+        voteResults: null,
+        votedOutUUID: null,
+        werewolfVotes: null,
+        werewolfVictim: null,
+        witchUsedHealingPotion: false,
+        witchUsedKillingPotion: false,
+        redLadySleepoverUUID: null,
+        seerRevealUUID: null,
+        seerRevealRole: null,
+        cupidFirstLoverUUID: null,
+        cupidSecondLoverUUID: null,
+        cupidFirstLoverConfirmed: false,
+        cupidSecondLoverConfirmed: false,
+
     });
 }

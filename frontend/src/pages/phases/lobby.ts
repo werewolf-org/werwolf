@@ -1,6 +1,6 @@
 import type { View } from '../../router';
 import lobbyHtml from './lobby.html?raw';
-import { subscribeSelector, getState, setState } from '../../store';
+import { subscribeSelector, getState } from '../../store';
 import QRCode from 'qrcode';
 import { socketService } from '../../socket.service';
 
@@ -29,28 +29,20 @@ export class LobbyPhase implements View {
             }
         }
 
-        // 2. Subscribe to Players List
+        // 2. Reactive Subscriptions
         subscribeSelector(s => s.players, (players) => {
             this.updatePlayerList(players);
         })
 
-        // 3. Subscribe to Manager status
         subscribeSelector(s => s.isManager, (isManager) => {
-            const controls = document.getElementById('manager-controls');
-            const waitingMsg = document.getElementById('player-waiting-message');
-            
-            if (controls) controls.style.display = isManager ? 'block' : 'none';
-            if (waitingMsg) waitingMsg.style.display = isManager ? 'none' : 'block';
+            this.toggleManagerUI(isManager);
         })
 
         // Initial render
         this.updatePlayerList(state.players);
-        const controls = document.getElementById('manager-controls');
-        const waitingMsg = document.getElementById('player-waiting-message');
-        if (controls) controls.style.display = state.isManager ? 'block' : 'none';
-        if (waitingMsg) waitingMsg.style.display = state.isManager ? 'none' : 'block';
+        this.toggleManagerUI(state.isManager);
 
-        // 4. Setup Action Listeners
+        // 3. Setup Action Listeners
         const startBtn = document.getElementById('start-game-btn');
         if (startBtn) {
             startBtn.addEventListener('click', () => {
@@ -60,17 +52,24 @@ export class LobbyPhase implements View {
         }
     }
 
+    private toggleManagerUI(isManager: boolean) {
+        const controls = document.getElementById('manager-controls');
+        const waitingMsg = document.getElementById('player-waiting-message');
+        
+        if (controls) controls.style.display = isManager ? 'block' : 'none';
+        if (waitingMsg) waitingMsg.style.display = isManager ? 'none' : 'block';
+    }
+
     private nameUnnamedPlayers() {
         const players = getState().players;
-        let i = 0;
+        let i = 1;
         players.forEach((player) => {
-            if(player.displayName === '') socketService.changeName(player.playerUUID, `Unnamed Player ${i++}`);
+            if(player.displayName === '') socketService.changeName(player.playerUUID, `Player ${i++}`);
         })
     }
 
     private async generateQRCode(url: string, container: HTMLElement) {
         try {
-            // Get theme colors from CSS variables
             const style = getComputedStyle(document.documentElement);
             const colorLight = style.getPropertyValue('--card-bg').trim() || '#1a1c29';
 
@@ -79,8 +78,8 @@ export class LobbyPhase implements View {
                 width: 200,
                 margin: 2,
                 color: {
-                    dark: '#ffffff',   // Foreground is now always white
-                    light: colorLight  // Background matches card
+                    dark: '#ffffff',
+                    light: colorLight
                 }
             });
             container.appendChild(canvas);
@@ -93,45 +92,43 @@ export class LobbyPhase implements View {
     private updatePlayerList(players: any[]) {
         const listEl = document.getElementById('lobby-players-list');
         const countEl = document.getElementById('player-count');
-        const currentState = getState();
+        const state = getState();
         
         if (countEl) countEl.innerText = players.length.toString();
         if (!listEl) return;
 
-        // Sort players: Put "Me" at the top
         const sortedPlayers = [...players].sort((a, b) => {
-            const aIsMe = currentState.playerUUID && a.playerUUID === currentState.playerUUID;
-            const bIsMe = currentState.playerUUID && b.playerUUID === currentState.playerUUID;
+            const aIsMe = a.playerUUID === state.playerUUID;
+            const bIsMe = b.playerUUID === state.playerUUID;
             if (aIsMe) return -1;
             if (bIsMe) return 1;
             return 0;
         });
 
         listEl.innerHTML = sortedPlayers.map(p => {
-            const isMe = currentState.playerUUID && p.playerUUID === currentState.playerUUID;
+            const isMe = p.playerUUID === state.playerUUID;
             return `
                 <li class="pixel-list-item ${isMe ? 'own-player' : ''}">
-                    <span class="player-dot ${p.isAlive ? 'alive' : 'dead'}"></span>
+                    <span class="player-dot alive"></span>
                     ${isMe 
-                        ? `<input type="text" class="pixel-input name-edit-input" 
+                        ? `<input type="text" id="my-name-input" class="pixel-input name-edit-input" 
                               value="${p.displayName || ''}" 
                               placeholder="Type in your name..." 
                               style="margin-bottom: 0; padding: 4px; font-size: 1rem; width: auto; flex-grow: 1; text-align: left;">` 
-                        : `<span>${p.displayName || 'Unnamed Player'}</span>`
+                        : `<span>${p.displayName}</span>`
                     }
                 </li>
             `;
         }).join('');
 
-        // Add listeners for name changes
-        const nameInput = listEl.querySelector('.name-edit-input') as HTMLInputElement;
+        const nameInput = document.getElementById('my-name-input') as HTMLInputElement;
         if (nameInput) {
+            // Keep focus if we are typing and list re-renders
             nameInput.addEventListener('change', (e) => {
                 const newName = (e.target as HTMLInputElement).value.trim();
-                setState({displayName: newName});
-                const playerUUID = getState().playerUUID
-                if(playerUUID) socketService.changeName(playerUUID, newName);
+                if (state.playerUUID) socketService.changeName(state.playerUUID, newName);
             });
         }
     }
+
 }

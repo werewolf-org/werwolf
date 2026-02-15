@@ -1,5 +1,4 @@
 <div class="day-container">
-    
     <!-- STATE 1: VOTING -->
     <div id="day-voting-view">
         <div class="pixel-card day-header">
@@ -19,12 +18,12 @@
             </ul>
         </div>
 
-        <div class="manager-controls">
+        <div id="day-voting-controls" class="manager-controls">
             <button id="confirm-vote-btn" class="btn btn-danger full-width" disabled>
                 Vote to Lynch
             </button>
         </div>
-        
+
         <div id="vote-confirmed-message" class="waiting-message" style="display: none;">
             <p class="fog-text">Vote Cast. Waiting for others...</p>
         </div>
@@ -49,50 +48,28 @@
             </ul>
         </div>
 
-        <div class="manager-controls">
+        <div id="day-result-controls" class="manager-controls">
             <button id="ready-for-night-btn" class="btn btn-primary full-width">
                 Ready for Night
             </button>
         </div>
 
-                <div id="night-waiting-message" class="waiting-message" style="display: none;">
-
-                    <p class="fog-text">Waiting for the sun to set... Close your eyes and surrender to the night.</p>
-
-                </div>
-
-            </div>
-
-        
-
-            <!-- DEATH ANNOUNCEMENT POPUP -->
-
-            <div id="death-popup-overlay" class="modal-overlay" style="display: none;">
-
-                <div class="pixel-card modal-content">
-
-                    <h2 class="highlight-text">Grim News</h2>
-
-                    <p class="fog-text">The following souls have left us:</p>
-
-                    <ul id="newly-dead-list" class="pixel-list">
-
-                        <!-- Deaths will be injected here -->
-
-                    </ul>
-
-                    <button id="close-death-popup" class="btn btn-primary full-width" style="margin-top: 20px;">
-
-                        I understand
-
-                    </button>
-
-                </div>
-
-            </div>
-
-        
-
+        <div id="night-waiting-message" class="waiting-message" style="display: none;">
+            <p class="fog-text">Waiting for the sun to set... Close your eyes and surrender to the night.</p>
         </div>
+    </div>
 
-        
+    <!-- DEATH ANNOUNCEMENT POPUP -->
+    <div id="death-popup-overlay" class="modal-overlay" style="display: none;">
+        <div class="pixel-card modal-content">
+            <h2 class="highlight-text">Grim News</h2>
+            <p class="fog-text">The following souls have left us:</p>
+            <ul id="newly-dead-list" class="pixel-list">
+                <!-- Deaths will be injected here -->
+            </ul>
+            <button id="close-death-popup" class="btn btn-primary full-width" style="margin-top: 20px;">
+                I understand
+            </button>
+        </div>
+    </div>
+</div>

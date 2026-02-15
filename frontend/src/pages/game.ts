@@ -1,7 +1,7 @@
 import gameHtml from './game.html?raw';
 import type { View } from '../router';
 import { subscribeSelector, getState, resetState } from '../store';
-import { Phase } from '@shared/models.js';
+import { Phase } from '@shared/phases';
 import { LobbyPhase } from './phases/lobby';
 import { PlaceholderPhase } from './phases/placeholder';
 import { RoleSelectionPhase } from './phases/role-selection';
@@ -9,6 +9,7 @@ import { socketService } from '../socket.service';
 import { RoleDistributionPhase } from './phases/role-distribution';
 import { NightPhase } from './phases/night';
 import { DayPhase } from './phases/day';
+import { audioService } from '../audio.service';
 
 export class GamePage implements View {
     private gameId: string;
@@ -31,7 +32,7 @@ export class GamePage implements View {
         // cleanup state
         resetState();
 
-        console.log('joining or re-joining...');
+        console.log(`joining or re-joining (with playerUUID: ${getState().playerUUID}) ...`);
         socketService.joinGame(this.gameId, getState().playerUUID ?? null);
 
         console.log(`GamePage mounted for ${this.gameId}`);
@@ -43,6 +44,13 @@ export class GamePage implements View {
 
     private renderPhase(phase: Phase): void {
         if (!this.phaseContainer) return;
+
+        // Audio Triggers for Phase Transitions
+        if (phase === Phase.NIGHT) {
+            audioService.playNarration('close_your_eyes', 'overwrite');
+        } else if (phase === Phase.DAY) {
+            audioService.playNarration('morning', 'overwrite');
+        }
 
         // Safety: Ensure Dark Mode if not in Day Phase
         if (phase !== Phase.DAY) {

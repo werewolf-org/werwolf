@@ -1,78 +1,110 @@
 import type { View } from '../../router';
 import werewolvesHtml from './werewolves.html?raw';
-import { getState } from '../../store';
+import { getState, subscribeSelector } from '../../store';
 import { socketService } from '../../socket.service';
 
 export class WerewolvesPhase implements View {
-    private container: HTMLElement | null = null;
     private selectedTargetUUID: string | null = null;
-    private hasVoted: boolean = false;
 
     mount(container: HTMLElement): void {
-        this.container = container;
-        this.container.innerHTML = werewolvesHtml;
+        container.innerHTML = werewolvesHtml;
 
-        this.renderPlayerList();
+        // Reactive updates
+        subscribeSelector(s => s.werewolfVotes, () => this.updateUI());
+        subscribeSelector(s => s.players, () => this.updateUI());
 
         const confirmBtn = document.getElementById('confirm-werewolf-target-btn');
         if (confirmBtn) {
             confirmBtn.addEventListener('click', () => {
-                if (this.selectedTargetUUID && !this.hasVoted) {
-                    this.hasVoted = true;
+                const state = getState();
+                const myUUID = state.playerUUID;
+                const alreadyVoted = state.werewolfVotes && myUUID && state.werewolfVotes[myUUID];
+
+                if (this.selectedTargetUUID && !alreadyVoted) {
                     socketService.werewolfVote(this.selectedTargetUUID);
-                    this.updateUIState();
                 }
             });
         }
+
+        this.updateUI();
     }
 
-    private updateUIState() {
-        const controls = this.container?.querySelector('.manager-controls') as HTMLElement;
+    private updateUI() {
+        const state = getState();
+        const myUUID = state.playerUUID;
+        const votes = state.werewolfVotes || {};
+        const hasVoted = !!(myUUID && votes[myUUID]);
+
+        const controls = document.getElementById('werewolf-controls');
         const waitingMsg = document.getElementById('werewolf-waiting-message');
         const listEl = document.getElementById('werewolf-target-list');
 
-        if (this.hasVoted) {
+        if (hasVoted) {
             if (controls) controls.style.display = 'none';
             if (waitingMsg) waitingMsg.style.display = 'block';
-            
-            // Disable interactions
             if (listEl) {
                 listEl.style.pointerEvents = 'none';
-                listEl.style.opacity = '0.7';
+                listEl.style.opacity = '0.8';
+            }
+        } else {
+            if (controls) controls.style.display = 'block';
+            if (waitingMsg) waitingMsg.style.display = 'none';
+            if (listEl) {
+                listEl.style.pointerEvents = 'auto';
+                listEl.style.opacity = '1';
             }
         }
+
+        this.renderPlayerList();
     }
 
     private renderPlayerList() {
         const listEl = document.getElementById('werewolf-target-list');
         if (!listEl) return;
 
-        const players = getState().players.filter(p => p.isAlive);
+        const state = getState();
+        const players = state.players.filter(p => p.isAlive);
+        const votes = state.werewolfVotes || {};
         
-        listEl.innerHTML = players.map(p => `
-            <li class="pixel-list-item selectable-player" data-uuid="${p.playerUUID}">
-                <span class="player-dot alive"></span>
-                <span class="player-name">${p.displayName}</span>
-            </li>
-        `).join('');
+        listEl.innerHTML = players.map(p => {
+            const isSelected = this.selectedTargetUUID === p.playerUUID;
+            
+            // Find who is voting for this player
+            const votersForThisPlayer = Object.entries(votes)
+                .filter(([, targetUUID]) => targetUUID === p.playerUUID)
+                .map(([voterUUID]) => {
+                    return state.players.find((player) => player.playerUUID === voterUUID);
+                });
+
+            const voteDisplay = votersForThisPlayer.length > 0 
+                ? `<div class="vote-indicators">${votersForThisPlayer.map(() => '<span class="wolf-icon">🐺</span>').join('')}</div>`
+                : '';
+
+            return `
+                <li class="pixel-list-item selectable-player ${isSelected ? 'selected' : ''}" data-uuid="${p.playerUUID}">
+                    <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
+                        <span>${p.displayName}</span>
+                        ${voteDisplay}
+                    </div>
+                </li>
+            `;
+        }).join('');
 
         // Selection logic
         const items = listEl.querySelectorAll('.selectable-player');
         items.forEach(item => {
             item.addEventListener('click', () => {
-                if (this.hasVoted) return;
+                const myUUID = state.playerUUID;
+                if (myUUID && votes[myUUID]) return;
 
-                // Clear previous selection
                 items.forEach(i => i.classList.remove('selected'));
-                
-                // Set new selection
                 item.classList.add('selected');
                 this.selectedTargetUUID = item.getAttribute('data-uuid');
                 
-                // Enable confirm button
                 const confirmBtn = document.getElementById('confirm-werewolf-target-btn') as HTMLButtonElement;
                 if (confirmBtn) confirmBtn.disabled = false;
             });
         });
     }
+
 }
