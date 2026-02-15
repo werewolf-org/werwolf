@@ -1,11 +1,10 @@
-import type { View } from '../../router';
+import { View } from '../../base-view';
 import lobbyHtml from './lobby.html?raw';
 import { subscribeSelector, getState } from '../../store';
 import QRCode from 'qrcode';
 import { socketService } from '../../socket.service';
 
-export class LobbyPhase implements View {
-    private container: HTMLElement | null = null;
+export class LobbyPhase extends View {
 
     mount(container: HTMLElement): void {
         this.container = container;
@@ -30,13 +29,13 @@ export class LobbyPhase implements View {
         }
 
         // 2. Reactive Subscriptions
-        subscribeSelector(s => s.players, (players) => {
+        this.subs.push(subscribeSelector(s => s.players, (players) => {
             this.updatePlayerList(players);
-        })
+        }));
 
-        subscribeSelector(s => s.isManager, (isManager) => {
+        this.subs.push(subscribeSelector(s => s.isManager, (isManager) => {
             this.toggleManagerUI(isManager);
-        })
+        }));
 
         // Initial render
         this.updatePlayerList(state.players);
@@ -64,7 +63,7 @@ export class LobbyPhase implements View {
         const players = getState().players;
         let i = 1;
         players.forEach((player) => {
-            if(player.displayName === '') socketService.changeName(player.playerUUID, `Unnamed Player ${i++}`);
+            if(player.displayName === '') socketService.changeName(player.playerUUID, `Player ${i++}`);
         })
     }
 
@@ -115,7 +114,7 @@ export class LobbyPhase implements View {
                               value="${p.displayName || ''}" 
                               placeholder="Type in your name..." 
                               style="margin-bottom: 0; padding: 4px; font-size: 1rem; width: auto; flex-grow: 1; text-align: left;">` 
-                        : `<span>${p.displayName || 'Unnamed Player'}</span>`
+                        : `<span>${p.displayName}</span>`
                     }
                 </li>
             `;
@@ -130,5 +129,4 @@ export class LobbyPhase implements View {
             });
         }
     }
-
 }

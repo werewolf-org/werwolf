@@ -1,17 +1,18 @@
-import type { View } from '../../router';
+import { View } from '../../base-view';
 import werewolvesHtml from './werewolves.html?raw';
 import { getState, subscribeSelector } from '../../store';
 import { socketService } from '../../socket.service';
 
-export class WerewolvesPhase implements View {
+export class WerewolvesPhase extends View {
     private selectedTargetUUID: string | null = null;
 
     mount(container: HTMLElement): void {
-        container.innerHTML = werewolvesHtml;
+        this.container = container;
+        this.container.innerHTML = werewolvesHtml;
 
         // Reactive updates
-        subscribeSelector(s => s.werewolfVotes, () => this.updateUI());
-        subscribeSelector(s => s.players, () => this.updateUI());
+        this.subs.push(subscribeSelector(s => s.werewolfVotes, () => this.updateUI()));
+        this.subs.push(subscribeSelector(s => s.players, () => this.updateUI()));
 
         const confirmBtn = document.getElementById('confirm-werewolf-target-btn');
         if (confirmBtn) {
@@ -73,7 +74,8 @@ export class WerewolvesPhase implements View {
             const votersForThisPlayer = Object.entries(votes)
                 .filter(([, targetUUID]) => targetUUID === p.playerUUID)
                 .map(([voterUUID]) => {
-                    return state.players.find((player) => player.playerUUID === voterUUID);
+                    const voter = state.players.find(v => v.playerUUID === voterUUID);
+                    return voter?.displayName || 'Unnamed Player';
                 });
 
             const voteDisplay = votersForThisPlayer.length > 0 
@@ -83,7 +85,7 @@ export class WerewolvesPhase implements View {
             return `
                 <li class="pixel-list-item selectable-player ${isSelected ? 'selected' : ''}" data-uuid="${p.playerUUID}">
                     <div style="display: flex; justify-content: space-between; width: 100%; align-items: center;">
-                        <span>${p.displayName}</span>
+                        <span>${p.displayName || 'Unnamed Player'}</span>
                         ${voteDisplay}
                     </div>
                 </li>
@@ -106,5 +108,4 @@ export class WerewolvesPhase implements View {
             });
         });
     }
-
 }

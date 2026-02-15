@@ -1,10 +1,9 @@
-import type { View } from '../../router';
+import { View } from '../../base-view';
 import dayHtml from './day.html?raw';
 import { getState, subscribeSelector } from '../../store';
 import { socketService } from '../../socket.service';
 
-export class DayPhase implements View {
-    private container: HTMLElement | null = null;
+export class DayPhase extends View {
     private selectedTargetUUID: string | null = null;
 
     mount(container: HTMLElement): void {
@@ -15,12 +14,12 @@ export class DayPhase implements View {
         document.body.classList.add('light-mode');
 
         // Reactive Subscriptions
-        subscribeSelector(s => s.lynchDone, () => this.updateUI());
-        subscribeSelector(s => s.myVoteTargetUUID, () => this.updateUI());
-        subscribeSelector(s => s.readyForNight, () => this.updateUI());
-        subscribeSelector(s => s.players, () => {
+        this.subs.push(subscribeSelector(s => s.lynchDone, () => this.updateUI()));
+        this.subs.push(subscribeSelector(s => s.myVoteTargetUUID, () => this.updateUI()));
+        this.subs.push(subscribeSelector(s => s.readyForNight, () => this.updateUI()));
+        this.subs.push(subscribeSelector(s => s.players, () => {
             this.updateUI();
-        });
+        }));
 
         this.setupEventListeners();
         
@@ -100,7 +99,7 @@ export class DayPhase implements View {
             }
         }
 
-        this.renderPlayerList(listEl as HTMLElement);
+        if (listEl) this.renderPlayerList(listEl);
     }
 
     private renderResultView() {
@@ -130,7 +129,6 @@ export class DayPhase implements View {
     }
 
     private renderPlayerList(listEl: HTMLElement) {
-        if (!listEl) return;
         const state = getState();
         const players = state.players.filter(p => p.isAlive);
         
@@ -140,7 +138,7 @@ export class DayPhase implements View {
             return `
                 <li class="pixel-list-item selectable-player ${isSelected ? 'selected' : ''}" data-uuid="${p.playerUUID}">
                     <span class="player-dot alive"></span>
-                    <span class="player-name">${p.displayName}${isMe ? ' (You)' : ''}</span>
+                    <span class="player-name">${p.displayName || 'Unnamed Player'}${isMe ? ' (You)' : ''}</span>
                 </li>
             `;
         }).join('');
@@ -148,7 +146,8 @@ export class DayPhase implements View {
         const items = listEl.querySelectorAll('.selectable-player');
         items.forEach(item => {
             item.addEventListener('click', () => {
-                if (getState().myVoteTargetUUID || !getState().players.find(p => p.playerUUID === getState().playerUUID)?.isAlive) return;
+                const me = getState().players.find(p => p.playerUUID === getState().playerUUID);
+                if (getState().myVoteTargetUUID || !me?.isAlive) return;
 
                 items.forEach(i => i.classList.remove('selected'));
                 item.classList.add('selected');
@@ -170,7 +169,8 @@ export class DayPhase implements View {
         const lynchTextEl = document.getElementById('lynch-result-text');
         
         if (lynchedUUID) {
-            if (lynchedNameEl) lynchedNameEl.innerText = players.find((player) => player.playerUUID == lynchedUUID)?.displayName ?? 'No One';
+            const victim = players.find(p => p.playerUUID === lynchedUUID);
+            if (lynchedNameEl) lynchedNameEl.innerText = victim?.displayName || 'Unnamed Player';
             if (lynchTextEl) lynchTextEl.innerText = '...was sent to the gallows.';
         } else {
             if (lynchedNameEl) {
@@ -187,13 +187,15 @@ export class DayPhase implements View {
         Object.entries(votes).forEach(([voterUUID, targetUUID]) => {
             if (!targetUUID) return;
             if (!votesByTarget[targetUUID]) votesByTarget[targetUUID] = [];
-            votesByTarget[targetUUID].push(players.find((player) => player.playerUUID == voterUUID)?.displayName ?? '');
+            const voter = players.find(p => p.playerUUID === voterUUID);
+            votesByTarget[targetUUID].push(voter?.displayName || 'Unnamed Player');
         });
 
         const sortedTargets = Object.entries(votesByTarget).sort((a, b) => b[1].length - a[1].length);
 
         breakdownEl.innerHTML = sortedTargets.map(([targetUUID, voterNames]) => {
-            const targetName = players.find((player) => player.playerUUID === targetUUID)?.displayName;
+            const target = players.find(p => p.playerUUID === targetUUID);
+            const targetName = target?.displayName || 'Unnamed Player';
             const isDead = targetUUID === lynchedUUID;
 
             return `
@@ -209,7 +211,6 @@ export class DayPhase implements View {
                     </div>
                 </li>
             `;
-                    }).join('');
-            }
-        }
-        
+        }).join('');
+    }
+}

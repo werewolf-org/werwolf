@@ -1,18 +1,19 @@
-import type { View } from '../../router';
+import { View } from '../../base-view';
 import witchHtml from './witch.html?raw';
 import { getState, subscribeSelector } from '../../store';
 import { socketService } from '../../socket.service';
 
-export class WitchPhase implements View {
+export class WitchPhase extends View {
 
     mount(container: HTMLElement): void {
-        container.innerHTML = witchHtml;
+        this.container = container;
+        this.container.innerHTML = witchHtml;
         
         // Reactive Subscriptions
-        subscribeSelector(s => s.werewolfVictim, () => this.updateUI());
-        subscribeSelector(s => s.witchUsedHealingPotion, () => this.updateUI());
-        subscribeSelector(s => s.witchUsedKillingPotion, () => this.updateUI());
-        subscribeSelector(s => s.players, () => this.updateUI());
+        this.subs.push(subscribeSelector(s => s.werewolfVictim, () => this.updateUI()));
+        this.subs.push(subscribeSelector(s => s.witchUsedHealingPotion, () => this.updateUI()));
+        this.subs.push(subscribeSelector(s => s.witchUsedKillingPotion, () => this.updateUI()));
+        this.subs.push(subscribeSelector(s => s.players, () => this.updateUI()));
 
         this.setupListeners();
         
@@ -31,7 +32,8 @@ export class WitchPhase implements View {
         const victimReveal = document.getElementById('witch-victim-reveal');
         
         if (victimUUID) {
-            if (victimReveal) victimReveal.innerText = state.players.find((player) => player.playerUUID === victimUUID)?.displayName ?? '';
+            const victim = state.players.find(p => p.playerUUID === victimUUID);
+            if (victimReveal) victimReveal.innerText = victim?.displayName || 'Unnamed Player';
             if (victimMsg) victimMsg.innerText = "The Werewolves have chosen a victim...";
         } else {
             if (victimMsg) victimMsg.innerText = "The Werewolves were peaceful tonight. No one was attacked.";
@@ -53,7 +55,6 @@ export class WitchPhase implements View {
         }
 
         // 3. Kill Potion UI
-        // const killBtn = document.getElementById('use-kill-btn') as HTMLButtonElement;
         const killUsedMsg = document.getElementById('kill-used-msg');
         const killControls = document.getElementById('kill-controls');
         const killSelection = document.getElementById('witch-kill-selection');
@@ -65,8 +66,6 @@ export class WitchPhase implements View {
         } else {
             if (killControls) killControls.style.display = 'flex';
             if (killUsedMsg) killUsedMsg.style.display = 'none';
-            // killSelection visibility is handled by local toggle, 
-            // but we ensure it's rendered when visible
             this.renderKillList();
         }
     }
@@ -117,7 +116,7 @@ export class WitchPhase implements View {
         listEl.innerHTML = players.map(p => `
             <li class="pixel-list-item selectable-player" data-uuid="${p.playerUUID}">
                 <span class="player-dot alive"></span>
-                <span class="player-name">${p.displayName}</span>
+                <span class="player-name">${p.displayName || 'Unnamed Player'}</span>
             </li>
         `).join('');
 
@@ -133,7 +132,4 @@ export class WitchPhase implements View {
             });
         });
     }
-
 }
-
-

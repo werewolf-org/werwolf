@@ -1,10 +1,9 @@
 import startHtml from './start.html?raw'
 import { socketService } from '../socket.service';
-import type { View } from '../router';
+import { View } from '../base-view';
 import { audioService } from '../audio.service';
 
-export class StartPage implements View {
-  private container: HTMLElement | null = null;
+export class StartPage extends View {
   private createBtn: HTMLButtonElement | null = null;
 
   mount(container: HTMLElement): void {

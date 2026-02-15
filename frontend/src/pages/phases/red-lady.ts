@@ -1,19 +1,20 @@
-import type { View } from '../../router';
+import { View } from '../../base-view';
 import redLadyHtml from './red-lady.html?raw';
 import { getState, subscribeSelector } from '../../store';
 import { socketService } from '../../socket.service';
 
-export class RedLadyPhase implements View {
-    private container: HTMLElement | null = null;
+export class RedLadyPhase extends View {
     private selectedTargetUUID: string | null = null;
 
     mount(container: HTMLElement): void {
         this.container = container;
         this.container.innerHTML = redLadyHtml;
 
+        console.log('mount red lady with id: ', getState().redLadySleepoverUUID);
+
         // Reactive Subscriptions
-        subscribeSelector(s => s.redLadySleepoverUUID, () => this.updateUI());
-        subscribeSelector(s => s.players, () => this.updateUI());
+        this.subs.push(subscribeSelector(s => s.redLadySleepoverUUID, () => this.updateUI()));
+        this.subs.push(subscribeSelector(s => s.players, () => this.updateUI()));
 
         const confirmBtn = document.getElementById('confirm-sleepover-btn');
         if (confirmBtn) {

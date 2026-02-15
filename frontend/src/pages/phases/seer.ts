@@ -1,11 +1,10 @@
-import type { View } from '../../router';
+import { View } from '../../base-view';
 import seerHtml from './seer.html?raw';
 import { getState, subscribeSelector } from '../../store';
 import { socketService } from '../../socket.service';
 import { Role, ROLES } from '@shared/roles.js';
 
-export class SeerPhase implements View {
-    private container: HTMLElement | null = null;
+export class SeerPhase extends View {
     private selectedTargetUUID: string | null = null;
 
     mount(container: HTMLElement): void {
@@ -13,9 +12,9 @@ export class SeerPhase implements View {
         this.container.innerHTML = seerHtml;
 
         // Reactive Subscriptions
-        subscribeSelector(s => s.seerRevealUUID, () => this.updateUI());
-        subscribeSelector(s => s.seerRevealRole, () => this.updateUI());
-        subscribeSelector(s => s.players, () => this.updateUI());
+        this.subs.push(subscribeSelector(s => s.seerRevealUUID, () => this.updateUI()));
+        this.subs.push(subscribeSelector(s => s.seerRevealRole, () => this.updateUI()));
+        this.subs.push(subscribeSelector(s => s.players, () => this.updateUI()));
 
         this.setupSelectionListeners();
         this.setupDismissListener();
@@ -66,7 +65,8 @@ export class SeerPhase implements View {
 
     private renderRevealData(playerUUID: string, role: Role) {
         const state = getState();
-        const targetName = state.players.find((player) => player.playerUUID === playerUUID)?.displayName;
+        const targetPlayer = state.players.find(p => p.playerUUID === playerUUID);
+        const targetName = targetPlayer?.displayName || 'Unnamed Player';
         const roleDef = ROLES[role];
 
         const imgEl = document.getElementById('reveal-role-image') as HTMLImageElement;
@@ -110,7 +110,7 @@ export class SeerPhase implements View {
             return `
                 <li class="pixel-list-item selectable-player ${isSelected ? 'selected' : ''}" data-uuid="${p.playerUUID}">
                     <span class="player-dot alive"></span>
-                    <span class="player-name">${p.displayName}</span>
+                    <span class="player-name">${p.displayName || 'Unnamed Player'}</span>
                 </li>
             `;
         }).join('');

@@ -1,4 +1,4 @@
-import type { View } from '../../router';
+import { View } from '../../base-view';
 import nightHtml from './night.html?raw';
 import { subscribeSelector, getState } from '../../store';
 import { Role, ROLES } from '@shared/roles.js';
@@ -9,8 +9,7 @@ import { WitchPhase } from './witch';
 import { CupidPhase } from './cupid';
 import { audioService } from '../../audio.service';
 
-export class NightPhase implements View {
-    private container: HTMLElement | null = null;
+export class NightPhase extends View {
     private currentSubView: View | null = null;
 
     mount(container: HTMLElement): void {
@@ -18,17 +17,24 @@ export class NightPhase implements View {
         this.container.innerHTML = nightHtml;
 
         // Reactive Subscriptions
-        subscribeSelector(s => s.activeNightRole, (role) => {
+        this.subs.push(subscribeSelector(s => s.activeNightRole, (role) => {
             if (role) this.playRoleWakingAudio(role);
             this.updateNightView();
-        });
+        }));
         
-        subscribeSelector(s => s.players, () => this.updateNightView());
-        subscribeSelector(s => s.role, () => this.updateNightView());
-        subscribeSelector(s => s.lovePartnerUUID, () => this.updateNightView());
+        this.subs.push(subscribeSelector(s => s.players, () => this.updateNightView()));
+        this.subs.push(subscribeSelector(s => s.role, () => this.updateNightView()));
+        this.subs.push(subscribeSelector(s => s.lovePartnerUUID, () => this.updateNightView()));
 
         // Initial render
         this.updateNightView();
+    }
+
+    unmount(): void {
+        super.unmount();
+        if (this.currentSubView) {
+            this.currentSubView.unmount();
+        }
     }
 
     private playRoleWakingAudio(role: Role) {
@@ -101,30 +107,36 @@ export class NightPhase implements View {
 
         if (role === Role.WEREWOLF) {
             if (!(this.currentSubView instanceof WerewolvesPhase)) {
+                if (this.currentSubView?.unmount) this.currentSubView.unmount();
                 this.currentSubView = new WerewolvesPhase();
                 this.currentSubView.mount(actionContainer);
             }
         } else if (role === Role.SEER) {
             if (!(this.currentSubView instanceof SeerPhase)) {
+                if (this.currentSubView?.unmount) this.currentSubView.unmount();
                 this.currentSubView = new SeerPhase();
                 this.currentSubView.mount(actionContainer);
             }
         } else if (role === Role.RED_LADY) {
             if (!(this.currentSubView instanceof RedLadyPhase)) {
+                if (this.currentSubView?.unmount) this.currentSubView.unmount();
                 this.currentSubView = new RedLadyPhase();
                 this.currentSubView.mount(actionContainer);
             }
         } else if (role === Role.WITCH) {
             if (!(this.currentSubView instanceof WitchPhase)) {
+                if (this.currentSubView?.unmount) this.currentSubView.unmount();
                 this.currentSubView = new WitchPhase();
                 this.currentSubView.mount(actionContainer);
             }
         } else if (role === Role.CUPID) {
             if (!(this.currentSubView instanceof CupidPhase)) {
+                if (this.currentSubView?.unmount) this.currentSubView.unmount();
                 this.currentSubView = new CupidPhase();
                 this.currentSubView.mount(actionContainer);
             }
         } else {
+            if (this.currentSubView?.unmount) this.currentSubView.unmount();
             this.currentSubView = null;
             actionContainer.innerHTML = `
                 <div class="pixel-card">

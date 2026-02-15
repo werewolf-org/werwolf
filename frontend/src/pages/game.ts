@@ -1,9 +1,9 @@
 import gameHtml from './game.html?raw';
-import type { View } from '../router';
 import { subscribeSelector, getState, resetState } from '../store';
 import { Phase } from '@shared/phases';
 import { LobbyPhase } from './phases/lobby';
 import { PlaceholderPhase } from './phases/placeholder';
+import { View } from '../base-view';
 import { RoleSelectionPhase } from './phases/role-selection';
 import { socketService } from '../socket.service';
 import { RoleDistributionPhase } from './phases/role-distribution';
@@ -12,9 +12,8 @@ import { DayPhase } from './phases/day';
 import { audioService } from '../audio.service';
 import { ROLES, Role } from '@shared/roles.js';
 
-export class GamePage implements View {
+export class GamePage extends View {
     private gameId: string;
-    private container: HTMLElement | null = null;
     private phaseContainer: HTMLElement | null = null;
     private knownDeadUUIDs: Set<string> = new Set();
     private deathsInitialized: boolean = false;
@@ -23,6 +22,7 @@ export class GamePage implements View {
     private currentPhaseView: View | null = null;
 
     constructor(gameId: string) {
+        super();
         this.gameId = gameId;
     }
 
@@ -42,12 +42,12 @@ export class GamePage implements View {
 
         console.log(`GamePage mounted for ${this.gameId}`);
 
-        subscribeSelector(s => s.phase, (phase) => {
+        this.subs.push(subscribeSelector(s => s.phase, (phase) => {
             if (phase) this.renderPhase(phase);
-        });
+        }));
 
         // Global death tracking
-        subscribeSelector(s => s.players, (players) => {
+        this.subs.push(subscribeSelector(s => s.players, (players) => {
             if (players.length === 0) return;
 
             // On first sync after join/rejoin, just mark currently dead players as "known"
@@ -60,7 +60,7 @@ export class GamePage implements View {
             }
 
             this.checkForNewDeaths(players);
-        });
+        }));
 
         // Setup close button for global popup
         const closeBtn = document.getElementById('close-death-popup');
@@ -69,6 +69,13 @@ export class GamePage implements View {
                 const overlay = document.getElementById('death-popup-overlay');
                 if (overlay) overlay.style.display = 'none';
             };
+        }
+    }
+
+    unmount(): void {
+        super.unmount();
+        if (this.currentPhaseView) {
+            this.currentPhaseView.unmount();
         }
     }
 
@@ -113,6 +120,11 @@ export class GamePage implements View {
         // Safety: Ensure Dark Mode if not in Day Phase
         if (phase !== Phase.DAY) {
             document.body.classList.remove('light-mode');
+        }
+
+        // Cleanup previous sub-view
+        if (this.currentPhaseView?.unmount) {
+            this.currentPhaseView.unmount();
         }
 
         switch (phase) {

@@ -1,11 +1,10 @@
-import type { View } from '../../router';
+import { View } from '../../base-view';
 import cupidHtml from './cupid.html?raw';
 import { getState, subscribeSelector } from '../../store';
 import { socketService } from '../../socket.service';
 import { Role } from '@shared/roles.js';
 
-export class CupidPhase implements View {
-    private container: HTMLElement | null = null;
+export class CupidPhase extends View {
     private selectedTargetUUIDs: string[] = [];
 
     mount(container: HTMLElement): void {
@@ -13,12 +12,12 @@ export class CupidPhase implements View {
         this.container.innerHTML = cupidHtml;
 
         // Reactive Subscriptions
-        subscribeSelector(s => s.lovePartnerUUID, () => this.updateUI());
-        subscribeSelector(s => s.lovePartnerConfirmed, () => this.updateUI());
-        subscribeSelector(s => s.cupidFirstLoverUUID, () => this.updateUI());
-        subscribeSelector(s => s.cupidFirstLoverConfirmed, () => this.updateUI());
-        subscribeSelector(s => s.cupidSecondLoverConfirmed, () => this.updateUI());
-        subscribeSelector(s => s.players, () => this.updateUI());
+        this.subs.push(subscribeSelector(s => s.lovePartnerUUID, () => this.updateUI()));
+        this.subs.push(subscribeSelector(s => s.lovePartnerConfirmed, () => this.updateUI()));
+        this.subs.push(subscribeSelector(s => s.cupidFirstLoverUUID, () => this.updateUI()));
+        this.subs.push(subscribeSelector(s => s.cupidFirstLoverConfirmed, () => this.updateUI()));
+        this.subs.push(subscribeSelector(s => s.cupidSecondLoverConfirmed, () => this.updateUI()));
+        this.subs.push(subscribeSelector(s => s.players, () => this.updateUI()));
 
         this.setupCupidListeners();
         this.setupLoverListeners();
