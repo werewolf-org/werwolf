@@ -11,6 +11,8 @@ export class DayPhase extends View {
         this.container = container;
         this.container.innerHTML = dayHtml;
 
+        audioService.playNarration('morning', 'overwrite');
+
         // Switch to Light Mode for Day
         document.body.classList.add('light-mode');
 

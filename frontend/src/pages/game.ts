@@ -9,7 +9,6 @@ import { socketService } from '../socket.service';
 import { RoleDistributionPhase } from './phases/role-distribution';
 import { NightPhase } from './phases/night';
 import { DayPhase } from './phases/day';
-import { audioService } from '../audio.service';
 import { ROLES, Role } from '@shared/roles.js';
 
 export class GamePage extends View {
@@ -109,13 +108,6 @@ export class GamePage extends View {
 
     private renderPhase(phase: Phase): void {
         if (!this.phaseContainer) return;
-
-        // Audio Triggers for Phase Transitions
-        if (phase === Phase.NIGHT) {
-            audioService.playNarration('close_your_eyes', 'overwrite');
-        } else if (phase === Phase.DAY) {
-            audioService.playNarration('morning', 'overwrite');
-        }
 
         // Safety: Ensure Dark Mode if not in Day Phase
         if (phase !== Phase.DAY) {

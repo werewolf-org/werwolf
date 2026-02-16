@@ -27,6 +27,8 @@ export class NightPhase extends View {
         this.unsubs.push(subscribeSelector(s => s.lovePartnerUUID, () => this.updateNightView()));
 
         // Initial render
+        const activeNightRole = getState().activeNightRole;
+        if(activeNightRole) this.playRoleWakingAudio(activeNightRole);
         this.updateNightView();
     }
 
@@ -38,6 +40,7 @@ export class NightPhase extends View {
     }
 
     private playRoleWakingAudio(role: Role) {
+        audioService.playNarration('close_your_eyes', 'overwrite');
         switch(role) {
             case Role.CUPID: audioService.playNarration('cupid_wakes'); break;
             case Role.RED_LADY: audioService.playNarration('red_lady_wakes'); break;
