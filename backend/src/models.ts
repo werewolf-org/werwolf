@@ -2,18 +2,21 @@ import { Role } from '@shared/roles.js'
 import { Phase } from '@shared/phases.js';
 
 export interface Player {
+    // general
     playerUUID: string | null,
     socketId: string | null,
     displayName: string,
     role: Role | null,
-    voteTargetUUID: string | null, // who they vote for
-    nightAction: NightAction | null,
     isAlive: boolean,
-    isSheriff: boolean,
+    nightAction: NightAction | null,
+    // couple
     lovePartner: string | null,
     lovePartnerConfirmed: boolean,
+    // witch
     usedHealingPotion: boolean,
     usedKillingPotion: boolean,
+    // day
+    voteTargetUUID: string | null, // who they vote for
     readyForNight: boolean
 }
 
@@ -25,8 +28,9 @@ export interface Game {
     phase: Phase,
     activeNightRole: Role | null,
 
+    sheriffUUID: string | null,
     lynchDone: boolean,
-    votedOutUUID: string | null,
+    lastVotedOutUUID: string | null,
 }
 
 export interface NightAction {

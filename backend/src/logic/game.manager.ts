@@ -49,7 +49,7 @@ export class GameManager {
         const localPlayerList = game.players.map(p => ({
             playerUUID: p.playerUUID,
             displayName: p.displayName,
-            isSheriff: p.isSheriff,
+            isSheriff: p.playerUUID === game.sheriffUUID,
             isAlive: p.isAlive,
             role: p.isAlive ? null : p.role
         }));
@@ -71,7 +71,7 @@ export class GameManager {
             myVoteTargetUUID: player.voteTargetUUID,
 
             voteResults: this.getVoteResults(game),
-            votedOutUUID: game.votedOutUUID,
+            votedOutUUID: game.lastVotedOutUUID,
 
             werewolfVotes: werewolfVotes,
             werewolfVictim: werewolfVictim,
@@ -110,8 +110,9 @@ export class GameManager {
             round: 0,
             phase: Phase.LOBBY,
             activeNightRole: null,
+            sheriffUUID: null,
             lynchDone: false,
-            votedOutUUID: null,
+            lastVotedOutUUID: null,
         }
 
         socketService.notifyGameCreated(socketId, gameId);
@@ -153,7 +154,6 @@ export class GameManager {
             playerUUID: playerUUID, 
             nightAction: null,
             isAlive: true,
-            isSheriff: false,
             lovePartner: null,
             lovePartnerConfirmed: false,
             usedHealingPotion: false,
@@ -347,8 +347,8 @@ export class GameManager {
         let electedPlayerUUID: string | null = null;
         if(electedPlayers.length === 1) electedPlayerUUID = electedPlayers[0] ?? null;
         else if(electedPlayers.length > 1) {
-            const sheriff = alivePlayers.find((player) => player.isSheriff)
-            if(sheriff && sheriff.voteTargetUUID && electedPlayers.includes(sheriff.voteTargetUUID)) electedPlayerUUID = sheriff.voteTargetUUID;
+            const sheriff = alivePlayers.find((player) => player.playerUUID === game.sheriffUUID);
+            if(sheriff && sheriff.isAlive && sheriff.voteTargetUUID && electedPlayers.includes(sheriff.voteTargetUUID)) electedPlayerUUID = sheriff.voteTargetUUID;
         }
 
         const electedPlayer = alivePlayers.find((player) => player.playerUUID === electedPlayerUUID) ?? null;
@@ -367,7 +367,7 @@ export class GameManager {
 
         // reset votes
         game.lynchDone = true;
-        game.votedOutUUID = electedPlayer?.playerUUID ?? null;
+        game.lastVotedOutUUID = electedPlayer?.playerUUID ?? null;
         console.log(`Voting Resolved in Game ${game.gameId}. Player voted out: ${electedPlayer?.playerUUID}`)
     }
 

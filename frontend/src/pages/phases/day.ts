@@ -144,7 +144,10 @@ export class DayPhase extends View {
             return `
                 <li class="pixel-list-item selectable-player ${isSelected ? 'selected' : ''}" data-uuid="${p.playerUUID}">
                     <span class="player-dot alive"></span>
-                    <span class="player-name">${p.displayName || 'Unnamed Player'}${isMe ? ' (You)' : ''}</span>
+                    <span class="player-name">
+                        ${p.displayName || 'Unnamed Player'}${isMe ? ' (You)' : ''}
+                        ${p.isSheriff ? '<span class="sheriff-badge" title="Sheriff">🎖️</span>' : ''}
+                    </span>
                 </li>
             `;
         }).join('');
@@ -194,14 +197,15 @@ export class DayPhase extends View {
             if (!targetUUID) return;
             if (!votesByTarget[targetUUID]) votesByTarget[targetUUID] = [];
             const voter = players.find(p => p.playerUUID === voterUUID);
-            votesByTarget[targetUUID].push(voter?.displayName || 'Unnamed Player');
+            const name = (voter?.isSheriff ? '🎖️ ' : '') + (voter?.displayName || 'Unnamed Player');
+            votesByTarget[targetUUID].push(name);
         });
 
         const sortedTargets = Object.entries(votesByTarget).sort((a, b) => b[1].length - a[1].length);
 
         breakdownEl.innerHTML = sortedTargets.map(([targetUUID, voterNames]) => {
             const target = players.find(p => p.playerUUID === targetUUID);
-            const targetName = target?.displayName || 'Unnamed Player';
+            const targetName = (target?.isSheriff ? '🎖️ ' : '') + (target?.displayName || 'Unnamed Player');
             const isDead = targetUUID === lynchedUUID;
 
             return `
