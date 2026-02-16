@@ -45,9 +45,9 @@ export interface LocalAppState {
     seerRevealUUID: string | null;
     seerRevealRole: Role | null;
 
+    cupidSelectedLovers: boolean;
     cupidFirstLoverUUID: string | null;
     cupidSecondLoverUUID: string | null;
-
     cupidFirstLoverConfirmed: boolean;
     cupidSecondLoverConfirmed: boolean;
 
@@ -81,6 +81,7 @@ const state: LocalAppState = {
     redLadySleepoverUUID: null,
     seerRevealUUID: null,
     seerRevealRole: null,
+    cupidSelectedLovers: false,
     cupidFirstLoverUUID: null,
     cupidSecondLoverUUID: null,
     cupidFirstLoverConfirmed: false,

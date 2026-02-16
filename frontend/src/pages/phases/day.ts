@@ -12,6 +12,7 @@ export class DayPhase extends View {
         this.container.innerHTML = dayHtml;
 
         audioService.playNarration('morning', 'overwrite');
+        audioService.setAtmosphere('Village');
 
         // Switch to Light Mode for Day
         document.body.classList.add('light-mode');
@@ -23,9 +24,7 @@ export class DayPhase extends View {
         ));
         this.unsubs.push(subscribeSelector(s => s.myVoteTargetUUID, () => this.updateUI()));
         this.unsubs.push(subscribeSelector(s => s.readyForNight, () => this.updateUI()));
-        this.unsubs.push(subscribeSelector(s => s.players, () => {
-            this.updateUI();
-        }));
+        this.unsubs.push(subscribeSelector(s => s.players, () => this.updateUI()));
 
         this.setupEventListeners();
         

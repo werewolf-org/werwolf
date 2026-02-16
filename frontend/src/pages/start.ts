@@ -11,7 +11,7 @@ export class StartPage extends View {
     document.body.classList.remove('light-mode');
 
     // Stop any leftover narration when returning to start
-    audioService.stopAllNarration();
+    audioService.stopAllAudio();
 
     this.container = container;
     this.container.innerHTML = startHtml;

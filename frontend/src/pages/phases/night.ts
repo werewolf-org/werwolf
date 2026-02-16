@@ -22,6 +22,7 @@ export class NightPhase extends View {
             this.updateNightView();
         }));
         
+        this.unsubs.push(subscribeSelector(s => s.cupidSelectedLovers, () => audioService.playNarration('love_partners', 'overwrite')));
         this.unsubs.push(subscribeSelector(s => s.players, () => this.updateNightView()));
         this.unsubs.push(subscribeSelector(s => s.role, () => this.updateNightView()));
         this.unsubs.push(subscribeSelector(s => s.lovePartnerUUID, () => this.updateNightView()));
@@ -42,11 +43,11 @@ export class NightPhase extends View {
     private playRoleWakingAudio(role: Role) {
         audioService.playNarration('close_your_eyes', 'overwrite');
         switch(role) {
-            case Role.CUPID: audioService.playNarration('cupid_wakes'); break;
-            case Role.RED_LADY: audioService.playNarration('red_lady_wakes'); break;
-            case Role.SEER: audioService.playNarration('seer_wakes'); break;
-            case Role.WEREWOLF: audioService.playNarration('werewolf_wakes'); break;
-            case Role.WITCH: audioService.playNarration('witch_wakes'); break;
+            case Role.CUPID: audioService.playNarration('cupid_wakes'); audioService.setAtmosphere('Amor'); break;
+            case Role.RED_LADY: audioService.playNarration('red_lady_wakes'); audioService.setAtmosphere('Lady'); break;
+            case Role.SEER: audioService.playNarration('seer_wakes'); audioService.setAtmosphere('Seer'); break;
+            case Role.WEREWOLF: audioService.playNarration('werewolf_wakes'); audioService.setAtmosphere('Werewolf'); break;
+            case Role.WITCH: audioService.playNarration('witch_wakes'); audioService.setAtmosphere('Witch'); break;
             default: break;
         }
     }

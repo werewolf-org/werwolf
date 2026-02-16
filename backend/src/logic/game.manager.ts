@@ -28,12 +28,14 @@ export class GameManager {
         if (player.isAlive && (player.role === Role.WEREWOLF || player.role === Role.WITCH)) werewolfVictim = getWerewolfVictimUUID(game);
 
         // Cupid confirmation status
+        let cupidSelectedLovers = false;
         let cupidFirstLoverConfirmed = false;
         let cupidSecondLoverConfirmed = false;
         let cupidFirstLoverUUID = null;
         let cupidSecondLoverUUID = null;
         const cupid = game.players.find((p) => p.role == Role.CUPID);
         if(cupid && cupid.nightAction) {
+            cupidSelectedLovers = true;
             const firstLover = game.players.find(p => p.playerUUID === (cupid.nightAction as any).firstPlayerUUID);
             const secondLover = game.players.find(p => p.playerUUID === (cupid.nightAction as any).secondPlayerUUID);
             if(player.playerUUID === firstLover?.playerUUID || player.playerUUID === secondLover?.playerUUID || player.playerUUID === cupid.playerUUID) {
@@ -82,6 +84,7 @@ export class GameManager {
             seerRevealUUID: seerRevealUUID,
             seerRevealRole: seerRevealRole,
 
+            cupidSelectedLovers: cupidSelectedLovers,
             cupidFirstLoverUUID: cupidFirstLoverUUID,
             cupidSecondLoverUUID: cupidSecondLoverUUID,
             cupidFirstLoverConfirmed: cupidFirstLoverConfirmed,

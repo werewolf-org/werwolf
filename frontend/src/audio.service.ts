@@ -5,6 +5,7 @@ export class AudioService {
     
     private narrationAudio: HTMLAudioElement = new Audio();
     private atmosphereAudio: HTMLAudioElement = new Audio();
+    private activeSFX: HTMLAudioElement[] = [];
     
     private narrationQueue: string[] = [];
     private isNarrationPlaying: boolean = false;
@@ -73,6 +74,23 @@ export class AudioService {
     }
 
     /**
+     * Stops all audio: narration, atmosphere, and any playing SFX.
+     */
+    public stopAllAudio(): void {
+        this.stopAllNarration();
+
+        this.atmosphereAudio.pause();
+        this.atmosphereAudio.currentTime = 0;
+        this.atmosphereAudio.src = "";
+
+        this.activeSFX.forEach(sfx => {
+            sfx.pause();
+            sfx.currentTime = 0;
+        });
+        this.activeSFX = [];
+    }
+
+    /**
      * Set the looping background atmosphere from /sounds/*.mp3
      */
     public setAtmosphere(fileName: string): void {
@@ -99,7 +117,16 @@ export class AudioService {
 
         const sfx = new Audio(`/sounds/sfx/${fileName}.mp3`);
         sfx.volume = 0.8;
-        sfx.play().catch(e => console.warn("SFX autoplay blocked:", e));
+        
+        this.activeSFX.push(sfx);
+        sfx.onended = () => {
+            this.activeSFX = this.activeSFX.filter(a => a !== sfx);
+        };
+
+        sfx.play().catch(e => {
+            this.activeSFX = this.activeSFX.filter(a => a !== sfx);
+            console.warn("SFX autoplay blocked:", e);
+        });
     }
 
     private processQueue(): void {
