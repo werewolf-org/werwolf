@@ -3,6 +3,7 @@ import cupidHtml from './cupid.html?raw';
 import { getState, subscribeSelector } from '../../store';
 import { socketService } from '../../socket.service';
 import { Role } from '@shared/roles.js';
+import { audioService } from '../../audio.service';
 
 export class CupidPhase extends View {
     private selectedTargetUUIDs: string[] = [];
@@ -12,12 +13,15 @@ export class CupidPhase extends View {
         this.container.innerHTML = cupidHtml;
 
         // Reactive Subscriptions
-        this.subs.push(subscribeSelector(s => s.lovePartnerUUID, () => this.updateUI()));
-        this.subs.push(subscribeSelector(s => s.lovePartnerConfirmed, () => this.updateUI()));
-        this.subs.push(subscribeSelector(s => s.cupidFirstLoverUUID, () => this.updateUI()));
-        this.subs.push(subscribeSelector(s => s.cupidFirstLoverConfirmed, () => this.updateUI()));
-        this.subs.push(subscribeSelector(s => s.cupidSecondLoverConfirmed, () => this.updateUI()));
-        this.subs.push(subscribeSelector(s => s.players, () => this.updateUI()));
+        this.unsubs.push(subscribeSelector(s => s.lovePartnerUUID, () => this.updateUI()));
+        this.unsubs.push(subscribeSelector(s => s.lovePartnerConfirmed, () => this.updateUI()));
+        this.unsubs.push(subscribeSelector(s => s.cupidFirstLoverUUID, () => {
+            audioService.playNarration('love_partners', 'overwrite');
+            this.updateUI();
+        }));
+        this.unsubs.push(subscribeSelector(s => s.cupidFirstLoverConfirmed, () => this.updateUI()));
+        this.unsubs.push(subscribeSelector(s => s.cupidSecondLoverConfirmed, () => this.updateUI()));
+        this.unsubs.push(subscribeSelector(s => s.players, () => this.updateUI()));
 
         this.setupCupidListeners();
         this.setupLoverListeners();

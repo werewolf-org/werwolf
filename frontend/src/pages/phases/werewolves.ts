@@ -11,8 +11,8 @@ export class WerewolvesPhase extends View {
         this.container.innerHTML = werewolvesHtml;
 
         // Reactive updates
-        this.subs.push(subscribeSelector(s => s.werewolfVotes, () => this.updateUI()));
-        this.subs.push(subscribeSelector(s => s.players, () => this.updateUI()));
+        this.unsubs.push(subscribeSelector(s => s.werewolfVotes, () => this.updateUI()));
+        this.unsubs.push(subscribeSelector(s => s.players, () => this.updateUI()));
 
         const confirmBtn = document.getElementById('confirm-werewolf-target-btn');
         if (confirmBtn) {

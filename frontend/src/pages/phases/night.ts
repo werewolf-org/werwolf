@@ -17,14 +17,14 @@ export class NightPhase extends View {
         this.container.innerHTML = nightHtml;
 
         // Reactive Subscriptions
-        this.subs.push(subscribeSelector(s => s.activeNightRole, (role) => {
+        this.unsubs.push(subscribeSelector(s => s.activeNightRole, (role) => {
             if (role) this.playRoleWakingAudio(role);
             this.updateNightView();
         }));
         
-        this.subs.push(subscribeSelector(s => s.players, () => this.updateNightView()));
-        this.subs.push(subscribeSelector(s => s.role, () => this.updateNightView()));
-        this.subs.push(subscribeSelector(s => s.lovePartnerUUID, () => this.updateNightView()));
+        this.unsubs.push(subscribeSelector(s => s.players, () => this.updateNightView()));
+        this.unsubs.push(subscribeSelector(s => s.role, () => this.updateNightView()));
+        this.unsubs.push(subscribeSelector(s => s.lovePartnerUUID, () => this.updateNightView()));
 
         // Initial render
         this.updateNightView();

@@ -13,8 +13,8 @@ export class RedLadyPhase extends View {
         console.log('mount red lady with id: ', getState().redLadySleepoverUUID);
 
         // Reactive Subscriptions
-        this.subs.push(subscribeSelector(s => s.redLadySleepoverUUID, () => this.updateUI()));
-        this.subs.push(subscribeSelector(s => s.players, () => this.updateUI()));
+        this.unsubs.push(subscribeSelector(s => s.redLadySleepoverUUID, () => this.updateUI()));
+        this.unsubs.push(subscribeSelector(s => s.players, () => this.updateUI()));
 
         const confirmBtn = document.getElementById('confirm-sleepover-btn');
         if (confirmBtn) {

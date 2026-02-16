@@ -10,10 +10,10 @@ export class WitchPhase extends View {
         this.container.innerHTML = witchHtml;
         
         // Reactive Subscriptions
-        this.subs.push(subscribeSelector(s => s.werewolfVictim, () => this.updateUI()));
-        this.subs.push(subscribeSelector(s => s.witchUsedHealingPotion, () => this.updateUI()));
-        this.subs.push(subscribeSelector(s => s.witchUsedKillingPotion, () => this.updateUI()));
-        this.subs.push(subscribeSelector(s => s.players, () => this.updateUI()));
+        this.unsubs.push(subscribeSelector(s => s.werewolfVictim, () => this.updateUI()));
+        this.unsubs.push(subscribeSelector(s => s.witchUsedHealingPotion, () => this.updateUI()));
+        this.unsubs.push(subscribeSelector(s => s.witchUsedKillingPotion, () => this.updateUI()));
+        this.unsubs.push(subscribeSelector(s => s.players, () => this.updateUI()));
 
         this.setupListeners();
         

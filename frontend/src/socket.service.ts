@@ -145,11 +145,6 @@ class SocketService {
             navigate(`#/game/${data.gameId}`);
         });
 
-        this.socket.on('syncState', (data: Partial<LocalAppState> ) => {
-            console.log('syncState, patch: ', data);
-            setState(data);
-        })
-
         this.socket.on('joinedGame', (data: { gameId: string, playerUUID: string }) => {
             localStorage.setItem('playerUUID', data.playerUUID);
             console.log('joined game with id: ', data.playerUUID);
@@ -157,48 +152,10 @@ class SocketService {
             resetState();
         });
 
-        // this.socket.on('rejoinedGame', (data: { gameId: string, playerUUID: string, isManager: boolean, role: Role | null, phase: Phase, activeNightRole: Role | null, displayName: string, lovePartnerUUID: string | null, players: [], voteResults: Record<string, string | null> | null, votedOutUUID: string | null}) => {
-        //     console.log('rejoin ', data)
-        //     setState(data);
-        // })
-
-        // this.socket.on('roleAssigned', (data: { role: Role }) => {
-        //     setState({phase: Phase.DISTRIBUTION, role: data.role})
-        // })
-
-        // this.socket.on('updatePlayers', (data: { players: [] }) => {
-        //     setState({players: data.players});
-        // })
-
-        // this.socket.on('updatePhase', (data: { phase: Phase }) => {
-        //     setState({phase: data.phase});
-        // })
-
-        // // TODO: maybe make another event nightStart for better seperability (that would be called when game starts or day is over)
-        // this.socket.on('nextActiveRole', (data: {role: Role}) => {
-        //     setState({phase: Phase.NIGHT, activeNightRole: data.role, voteResults: null});
-        // })
-
-        // this.socket.on('votingResolved', (data: {votedOutUUID: string | null, allVotes: Record<string, string | null>}) => {
-        //     setState({votedOutUUID: data.votedOutUUID, voteResults: data.allVotes});
-        // })
-
-        // this.socket.on('seePlayer', (data: {playerUUID: string, role: Role}) => {
-        //     setState({ seerReveal: data });
-        // })
-
-        // this.socket.on('witchData', (data: {victimUUID: string | null, usedHealingPotion: boolean, usedKillingPotion: boolean}) => {
-        //     setState({witchData: data});
-        // })
-
-        // this.socket.on('lovePartner', (data: { partnerUUID: string}) => {
-        //     setState({lovePartnerUUID: data.partnerUUID});
-        // });
-
-        // this.socket.on('newCouple', () => {
-        //     audioService.playNarration('love_partners', 'overwrite');
-        // });
-
+        this.socket.on('syncState', (data: Partial<LocalAppState> ) => {
+            console.log('syncState, patch: ', data);
+            setState(data);
+        })
 
     }
 }

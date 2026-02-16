@@ -42,12 +42,12 @@ export class GamePage extends View {
 
         console.log(`GamePage mounted for ${this.gameId}`);
 
-        this.subs.push(subscribeSelector(s => s.phase, (phase) => {
+        this.unsubs.push(subscribeSelector(s => s.phase, (phase) => {
             if (phase) this.renderPhase(phase);
         }));
 
         // Global death tracking
-        this.subs.push(subscribeSelector(s => s.players, (players) => {
+        this.unsubs.push(subscribeSelector(s => s.players, (players) => {
             if (players.length === 0) return;
 
             // On first sync after join/rejoin, just mark currently dead players as "known"

@@ -29,11 +29,11 @@ export class LobbyPhase extends View {
         }
 
         // 2. Reactive Subscriptions
-        this.subs.push(subscribeSelector(s => s.players, (players) => {
+        this.unsubs.push(subscribeSelector(s => s.players, (players) => {
             this.updatePlayerList(players);
         }));
 
-        this.subs.push(subscribeSelector(s => s.isManager, (isManager) => {
+        this.unsubs.push(subscribeSelector(s => s.isManager, (isManager) => {
             this.toggleManagerUI(isManager);
         }));
 
@@ -63,7 +63,7 @@ export class LobbyPhase extends View {
         const players = getState().players;
         let i = 1;
         players.forEach((player) => {
-            if(player.displayName === '') socketService.changeName(player.playerUUID, `Player ${i++}`);
+            if(player.displayName === '') socketService.changeName(player.playerUUID, `Unnamed Player ${i++}`);
         })
     }
 
@@ -114,7 +114,7 @@ export class LobbyPhase extends View {
                               value="${p.displayName || ''}" 
                               placeholder="Type in your name..." 
                               style="margin-bottom: 0; padding: 4px; font-size: 1rem; width: auto; flex-grow: 1; text-align: left;">` 
-                        : `<span>${p.displayName}</span>`
+                        : `<span>${p.displayName || 'Unnamed Player'}</span>`
                     }
                 </li>
             `;

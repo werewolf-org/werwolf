@@ -79,9 +79,13 @@ The frontend is built without a heavy framework (like React or Vue), relying on 
 - Views subscribe to specific parts of the state via `subscribeSelector`.
 - **UI is reactive**: When the store receives a `syncState` from the server, all mounted views automatically update to reflect the truth.
 
-### 2. View Architecture ("Active View")
-- **Interface**: All pages implement the `View` interface (`mount(container)`).
-- **Self-Updating**: Views mount once and listen to the store. They do not hold their own persistent business logic; they simply map the current state to HTML.
+### 2. View Architecture
+- **Base Class**: All views extend the `View` abstract class (`src/base-view.ts`).
+- **Lifecycle**:
+    - `mount(container)`: Called when the view enters the DOM.
+    - `unmount()`: Called when the view is replaced. It automatically cleans up all store subscriptions.
+- **Subscription Management**: Views use `this.unsubs.push(subscribeSelector(...))` to track listeners. This prevents "ghost" updates from old rounds or destroyed components by ensuring all listeners are killed during `unmount()`.
+- **Self-Updating**: Views are reactive. They mount once and listen to the store, mapping the current state to HTML whenever a relevant change occurs.
 
 ### 3. Routing (`src/router.ts`)
 - A simple Hash-based router (`#/`, `#/game/:id`).
@@ -94,6 +98,7 @@ The frontend is built without a heavy framework (like React or Vue), relying on 
 
 ## Folder Structure (`frontend/src/`)
 - **`router.ts`**: Navigation logic.
+- **`base-view.ts`**: The abstract `View` class and lifecycle definitions.
 - **`store.ts`**: Global state.
 - **`socket.service.ts`**: WebSocket communication.
 - **`audio.service.ts`**: Sound and narration management.

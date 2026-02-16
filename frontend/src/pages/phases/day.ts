@@ -2,6 +2,7 @@ import { View } from '../../base-view';
 import dayHtml from './day.html?raw';
 import { getState, subscribeSelector } from '../../store';
 import { socketService } from '../../socket.service';
+import { audioService } from '../../audio.service';
 
 export class DayPhase extends View {
     private selectedTargetUUID: string | null = null;
@@ -14,10 +15,13 @@ export class DayPhase extends View {
         document.body.classList.add('light-mode');
 
         // Reactive Subscriptions
-        this.subs.push(subscribeSelector(s => s.lynchDone, () => this.updateUI()));
-        this.subs.push(subscribeSelector(s => s.myVoteTargetUUID, () => this.updateUI()));
-        this.subs.push(subscribeSelector(s => s.readyForNight, () => this.updateUI()));
-        this.subs.push(subscribeSelector(s => s.players, () => {
+        this.unsubs.push(subscribeSelector(s => s.lynchDone, () => {
+            audioService.playNarration('end_of_day', 'overwrite');
+            this.updateUI()}
+        ));
+        this.unsubs.push(subscribeSelector(s => s.myVoteTargetUUID, () => this.updateUI()));
+        this.unsubs.push(subscribeSelector(s => s.readyForNight, () => this.updateUI()));
+        this.unsubs.push(subscribeSelector(s => s.players, () => {
             this.updateUI();
         }));
 
