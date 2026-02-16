@@ -38,10 +38,11 @@ export class LobbyPhase extends View {
         }));
 
         // Initial render
+        this.setupNameInput(state);
         this.updatePlayerList(state.players);
         this.toggleManagerUI(state.isManager);
 
-        // 3. Setup Action Listeners
+        // 4. Setup Action Listeners
         const startBtn = document.getElementById('start-game-btn');
         if (startBtn) {
             startBtn.addEventListener('click', () => {
@@ -57,6 +58,25 @@ export class LobbyPhase extends View {
         
         if (controls) controls.style.display = isManager ? 'block' : 'none';
         if (waitingMsg) waitingMsg.style.display = isManager ? 'none' : 'block';
+    }
+
+    private setupNameInput(state: any) {
+        const nameInput = document.getElementById('my-name-input') as HTMLInputElement;
+        const myPlayerSlot = document.getElementById('my-player-slot');
+        
+        if (nameInput && state.playerUUID) {
+            if (myPlayerSlot) myPlayerSlot.style.display = 'flex';
+            
+            const me = state.players.find((p: any) => p.playerUUID === state.playerUUID);
+            if (me) {
+                nameInput.value = me.displayName || '';
+            }
+
+            nameInput.addEventListener('change', (e) => {
+                const newName = (e.target as HTMLInputElement).value.trim();
+                if (state.playerUUID) socketService.changeName(state.playerUUID, newName);
+            });
+        }
     }
 
     private nameUnnamedPlayers() {
@@ -96,37 +116,15 @@ export class LobbyPhase extends View {
         if (countEl) countEl.innerText = players.length.toString();
         if (!listEl) return;
 
-        const sortedPlayers = [...players].sort((a, b) => {
-            const aIsMe = a.playerUUID === state.playerUUID;
-            const bIsMe = b.playerUUID === state.playerUUID;
-            if (aIsMe) return -1;
-            if (bIsMe) return 1;
-            return 0;
-        });
+        const otherPlayers = players.filter(p => p.playerUUID !== state.playerUUID);
 
-        listEl.innerHTML = sortedPlayers.map(p => {
-            const isMe = p.playerUUID === state.playerUUID;
+        listEl.innerHTML = otherPlayers.map(p => {
             return `
-                <li class="pixel-list-item ${isMe ? 'own-player' : ''}">
+                <li class="pixel-list-item">
                     <span class="player-dot alive"></span>
-                    ${isMe 
-                        ? `<input type="text" id="my-name-input" class="pixel-input name-edit-input" 
-                              value="${p.displayName || ''}" 
-                              placeholder="Type in your name..." 
-                              style="margin-bottom: 0; padding: 4px; font-size: 1rem; width: auto; flex-grow: 1; text-align: left;">` 
-                        : `<span>${p.displayName || 'Unnamed Player'}</span>`
-                    }
+                    <span>${p.displayName || 'Unnamed Player'}</span>
                 </li>
             `;
         }).join('');
-
-        const nameInput = document.getElementById('my-name-input') as HTMLInputElement;
-        if (nameInput) {
-            // Keep focus if we are typing and list re-renders
-            nameInput.addEventListener('change', (e) => {
-                const newName = (e.target as HTMLInputElement).value.trim();
-                if (state.playerUUID) socketService.changeName(state.playerUUID, newName);
-            });
-        }
     }
 }

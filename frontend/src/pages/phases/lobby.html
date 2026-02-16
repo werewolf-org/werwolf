@@ -5,8 +5,16 @@
 
     <div class="pixel-card players-list-card">
         <h4>Village Population (<span id="player-count">0</span>)</h4>
+        
+        <div id="my-player-slot" class="pixel-list-item own-player" style="margin-bottom: 10px; display: none;">
+            <span class="player-dot alive"></span>
+            <input type="text" id="my-name-input" class="pixel-input name-edit-input" 
+                   placeholder="Type in your name..." 
+                   style="margin-bottom: 0; padding: 4px; font-size: 1rem; width: auto; flex-grow: 1; text-align: left;">
+        </div>
+
         <ul id="lobby-players-list" class="pixel-list">
-            <!-- Players will be injected here -->
+            <!-- Other players will be injected here -->
         </ul>
     </div>
 
