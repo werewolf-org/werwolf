@@ -14,10 +14,22 @@
             </ul>
         </div>
 
-        <div class="manager-controls">
+        <div id="cupid-controls" class="manager-controls">
             <button id="confirm-cupid-target-btn" class="btn btn-primary full-width" disabled>
                 Shoot Arrows
             </button>
+        </div>
+    </div>
+
+    <!-- STATE 1.5: CUPID WAITING FOR LOVERS -->
+    <div id="cupid-status-view" style="display: none;">
+        <div class="pixel-card">
+            <h3>Arrows Sent</h3>
+            <p class="fog-text">You have linked two souls. They are now awakening to their shared fate...</p>
+            
+            <div id="lover-status-list" class="pixel-list" style="margin-top: 20px;">
+                <!-- Confirmation status injected here -->
+            </div>
         </div>
     </div>
 

@@ -13,7 +13,16 @@ Both are written with typescript.
 The `shared/` folder contains code that is used by both the frontend and the backend. This ensures type safety and consistency across the entire application.
 
 - **`roles.ts`**: Contains the `Role` enum, `RoleDef` interface, and the `ROLES` constant which defines the metadata (names, descriptions, teams, night order) for every role in the game.
-- **`models.ts`**: Contains common types and enums like `Phase`.
+- **`phases.ts`**: Contains the enum `Phase`.
+
+# Reactive State Architecture
+
+The project follows a **Reactive State Machine** pattern. In this model, the Frontend UI is a "pure function" of the State. 
+
+### Core Mandates:
+1.  **State-Driven UI**: UI elements MUST NOT trigger other UI elements directly. All UI changes must be a side-effect of a state update. (e.g., A button click calls a socket action -> Socket updates the Store -> Store triggers a UI re-render).
+2.  **Unidirectional Data Flow**: Backend State -> Socket `syncState` -> Frontend Store -> UI.
+3.  **Tailored Snapshots**: Instead of granular events, the backend sends a "Tailored State Snapshot" (`syncState`) to each player. This snapshot contains only the information that specific player is allowed to see (e.g., their own role, their own potion status, and public game info).
 
 # Development Setup
 
@@ -29,38 +38,22 @@ No database is used; all games are stored in-memory.
 
 ## Core Components (`backend/src/`)
 
-### 1. Entry Point (`index.ts`)
-- **Responsibility:** Initializes the HTTP server and Socket.IO server.
-- **Initialization:** Calls `socketService.init(io)` to set up the singleton.
-- **Event Handling:** Sets up the `io.on('connection')` listener. It acts as the "Controller", receiving raw socket events (like `joinGame`) and delegating the business logic to `GameManager`.
-- **Error Handling:** Wraps handler calls in a `handleErrors` helper to catch exceptions and send typed error messages back to the client via `socketService`.
+### 1. Communication & Sync (`socket.service.ts`)
+- **`syncState`**: The primary method for updating clients. It sends a partial `AppState` object tailored to the receiving player.
+- **`broadcastSyncState`**: Iterates through all players in a game and sends each their own tailored `syncState`. This is called whenever any game-wide change occurs (phase change, vote cast, etc.).
 
-### 2. Communication Layer (`socket.service.ts`)
-- **Responsibility:** Singleton class that abstracts all outbound `Socket.IO` communication.
-- **Pattern:** Replaces scattered `io.to().emit()` calls with semantic, typed methods.
-- **Features:**
-    - `notifyGameCreated`, `notifyPlayerJoined`
-    - `notifyPhaseUpdate`, `notifyNextActiveRole`
-    - Role-specific notifications: `notifySeerResult`, `notifyWerewolfVote`, etc.
-    - Error notifications.
-
-### 3. Business Logic (`logic/`)
-- **`game.manager.ts`**: The central orchestrator.
+### 2. Business Logic (`logic/`)
+- **`game.manager.ts`**: The central orchestrator. 
     - Manages Game State (Lobby -> Setup -> Night -> Day).
-    - Handles player joins, name changes, and voting.
-    - Delegates specific role actions during the night to `role.handler.ts`.
-    - **Note:** It does *not* take `io` as an argument anymore; it uses the `socketService` singleton for updates.
-- **`role.handler.ts`**: Contains specific logic for each role (Seer, Witch, Cupid, etc.).
-    - `WerewolfHandler`: Handles voting logic.
-    - `SeerHandler`: Resolves looking at cards.
-    - `nextRole(game)`: A utility function that determines the next role to wake up based on `ROLES` metadata and the current game state.
+    - Handles player joins/rejoins. **Rejoining is handled by updating the player's socketId and sending a fresh `syncState`.**
+- **`role.handler.ts`**: Contains specific logic for each role. Actions here update the `Game` and `Player` objects, which are then synced to clients.
 
-### 4. Data Storage (`store/`)
+### 3. Data Storage (`store/`)
 - **`game.store.ts`**: Singleton in-memory database (`Map<string, Game>`).
 
 ## Data Models
 - **Enums:** String Enums are used for `Role` (e.g., `"WEREWOLF"`) and `Phase` (e.g., `"NIGHT"`) for better logging and serialization.
-- **Player State:** Role-specific attributes (like "hasHealPotion" or "inLoveWith") are stored in `Player.attributes` to persist across rounds.
+- **Player State:** Role-specific attributes (like `usedHealingPotion` or `lovePartner`) are stored in `Player` objects to persist across rounds and enable rejoining.
 
 ## Game Logic (State Machine)
 The game follows a strict phase sequence:
@@ -72,7 +65,7 @@ The game follows a strict phase sequence:
     - `role.handler.ts` manages the transition between roles using `nextRole`.
 5.  **DAY**: Discussion and Voting.
     - Voting logic is handled in `GameManager.vote`.
-    - Lnyching resolution triggers a return to **NIGHT**.
+    - Lynch resolution triggers a return to **NIGHT**.
 6.  **GAME_OVER**: Win condition met.
 
 # Frontend Architecture
@@ -81,39 +74,34 @@ The game follows a strict phase sequence:
 
 The frontend is built without a heavy framework (like React or Vue), relying on a custom, lightweight component system.
 
-### 1. View Architecture ("Active View")
-- **Interface:** All pages implement the `View` interface (`mount(container)`).
-- **Self-Updating:** Views are "Active". They subscribe to the global store (`store.ts`) inside their `mount` method and handle their own DOM updates when the state changes.
+### 1. The Reactive Store (`src/store.ts`)
+- A centralized, observable store (`LocalAppState`).
+- Views subscribe to specific parts of the state via `subscribeSelector`.
+- **UI is reactive**: When the store receives a `syncState` from the server, all mounted views automatically update to reflect the truth.
 
-### 2. Routing (`src/router.ts`)
+### 2. View Architecture
+- **Base Class**: All views extend the `View` abstract class (`src/base-view.ts`).
+- **Lifecycle**:
+    - `mount(container)`: Called when the view enters the DOM.
+    - `unmount()`: Called when the view is replaced. It automatically cleans up all store subscriptions.
+- **Subscription Management**: Views use `this.unsubs.push(subscribeSelector(...))` to track listeners. This prevents "ghost" updates from old rounds or destroyed components by ensuring all listeners are killed during `unmount()`.
+- **Self-Updating**: Views are reactive. They mount once and listen to the store, mapping the current state to HTML whenever a relevant change occurs.
+
+### 3. Routing (`src/router.ts`)
 - A simple Hash-based router (`#/`, `#/game/:id`).
-- Handles the lifecycle of top-level views
-- **StartPage:** (`src/pages/start.ts`) Entry point for creating/joining games.
-- **GamePage:** (`src/pages/game.ts`) The main container for gameplay.
+- Handles the lifecycle of top-level views.
 
-### 3. Game Page & Phase Management
-The `GamePage` acts as a **Controller/Container** rather than a static page.
-- **Structure:** It renders a persistent header (Game ID, Player Name/UUID) and a dynamic container (`#phase-view-container`).
-- **Phase Switching:** It observes `state.phase`. When the phase changes, it dynamically swaps the sub-view in the container.
-- **Sub-Views:** Located in `src/pages/phases/`.
-    - `LobbyPhase` (`phases/lobby.ts`): UI for the waiting room.
-    - `PlaceholderPhase` (`phases/placeholder.ts`): Generic view for unimplemented phases.
-    - *Future phases (Night, Day, etc.) will be added here as separate classes.*
-
-### 4. State Management (`src/store.ts`)
-- A simple observable store pattern.
-- Exports `getState()`, `setState(patch)`, and `subscribe(listener)`.
-- Holds the entire `AppState` including `gameId`, `playerUUID`, `phase`, `players` list, etc.
-
-### 5. Communication (`src/socket.service.ts`)
-- A singleton `SocketService` wraps the `socket.io-client`.
-- **Inbound:** Listens for server events (`gameCreated`, `phaseChange`) and updates the global Store via `setState`.
-- **Outbound:** Provides methods (`createGame`, `joinGame`) for views to send actions to the server.
+### 4. Audio Service (`src/audio.service.ts`)
+- A singleton managing atmosphere (looping background) and narration (one-time lines).
+- **Narration is restricted**: To prevent chaos, narration sounds only play on the **Game Manager's** device.
+- **Atmosphere**: Also restricted to the Game Manager to maintain a shared environmental feel for those playing in person.
 
 ## Folder Structure (`frontend/src/`)
 - **`router.ts`**: Navigation logic.
+- **`base-view.ts`**: The abstract `View` class and lifecycle definitions.
 - **`store.ts`**: Global state.
 - **`socket.service.ts`**: WebSocket communication.
+- **`audio.service.ts`**: Sound and narration management.
 - **`pages/`**:
     - **`start.ts`**: Landing page.
     - **`game.ts`**: Main Game Controller.

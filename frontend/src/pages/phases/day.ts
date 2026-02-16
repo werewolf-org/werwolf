@@ -1,16 +1,11 @@
-import type { View } from '../../router';
+import { View } from '../../base-view';
 import dayHtml from './day.html?raw';
 import { getState, subscribeSelector } from '../../store';
 import { socketService } from '../../socket.service';
-import { Role, ROLES } from '@shared/roles.js';
 import { audioService } from '../../audio.service';
 
-export class DayPhase implements View {
-    private container: HTMLElement | null = null;
+export class DayPhase extends View {
     private selectedTargetUUID: string | null = null;
-    private hasVoted: boolean = false;
-    private hasConfirmedNight: boolean = false;
-    private knownDeadUUIDs: Set<string> = new Set();
 
     mount(container: HTMLElement): void {
         this.container = container;
@@ -19,177 +14,105 @@ export class DayPhase implements View {
         // Switch to Light Mode for Day
         document.body.classList.add('light-mode');
 
-        audioService.playNarration('morning', 'overwrite');
+        // Reactive Subscriptions
+        this.unsubs.push(subscribeSelector(s => s.lynchDone, () => {
+            audioService.playNarration('end_of_day', 'overwrite');
+            this.updateUI()}
+        ));
+        this.unsubs.push(subscribeSelector(s => s.myVoteTargetUUID, () => this.updateUI()));
+        this.unsubs.push(subscribeSelector(s => s.readyForNight, () => this.updateUI()));
+        this.unsubs.push(subscribeSelector(s => s.players, () => {
+            this.updateUI();
+        }));
 
-        // Initialize known deaths from current state
-        const initialState = getState();
-        initialState.players.forEach(p => {
-            if (!p.isAlive) this.knownDeadUUIDs.add(p.playerUUID);
-        });
-
-        this.setupVotingView();
+        this.setupEventListeners();
         
-        // Listen for results
-        subscribeSelector(s => s.voteResults, (results) => {
-            if (results) this.showResultView();
-        });
+        // Initial render
+        this.updateUI();
+    }
 
-        // Listen for player updates
-        subscribeSelector(s => s.players, (players) => {
-            this.checkForNewDeaths(players);
-            
-            const state = getState();
-            if (state.voteResults) {
-                this.showResultView();
-            } else {
-                this.setupVotingView();
-            }
-        });
+    private setupEventListeners() {
+        const confirmBtn = document.getElementById('confirm-vote-btn');
+        if (confirmBtn) {
+            confirmBtn.addEventListener('click', () => {
+                if (this.selectedTargetUUID) {
+                    socketService.vote(this.selectedTargetUUID);
+                }
+            });
+        }
 
-        // Initial check if we mounted late (results already in)
-        if (getState().voteResults) {
-            this.showResultView();
+        const readyBtn = document.getElementById('ready-for-night-btn');
+        if (readyBtn) {
+            readyBtn.addEventListener('click', () => {
+                socketService.readyForNight();
+            });
+        }
+    }
+
+    private updateUI() {
+        const state = getState();
+        const votingView = document.getElementById('day-voting-view');
+        const resultView = document.getElementById('day-result-view');
+
+        if (state.lynchDone) {
+            // STATE: RESULTS
+            if (votingView) votingView.style.display = 'none';
+            if (resultView) resultView.style.display = 'block';
+            this.renderResultView();
         } else {
-            this.setupVotingLogic();
+            // STATE: VOTING
+            if (votingView) votingView.style.display = 'block';
+            if (resultView) resultView.style.display = 'none';
+            this.renderVotingView();
         }
     }
 
-    private checkForNewDeaths(players: any[]) {
-        const newlyDead = players.filter(p => !p.isAlive && !this.knownDeadUUIDs.has(p.playerUUID));
-        
-        if (newlyDead.length > 0) {
-            // Update known dead immediately so we don't trigger again
-            newlyDead.forEach(p => this.knownDeadUUIDs.add(p.playerUUID));
-            this.renderNewDeaths(newlyDead);
-        }
-    }
-
-    private renderNewDeaths(newlyDead: any[]) {
-        const popup = document.getElementById('death-popup-overlay');
-        const listEl = document.getElementById('newly-dead-list');
-        if (!popup || !listEl) return;
-
-        listEl.innerHTML = newlyDead.map(p => {
-            const roleName = p.role ? ROLES[p.role as Role].displayName : 'Unknown';
-            return `
-                <li class="pixel-list-item" style="justify-content: space-between;">
-                    <span class="highlight-text" style="font-family: 'Press Start 2P'; font-size: 0.7rem;">${p.displayName}</span>
-                    <span class="fog-text" style="font-size: 1.2rem;">${roleName}</span>
-                </li>
-            `;
-        }).join('');
-
-        popup.style.display = 'flex';
-
-        const closeBtn = document.getElementById('close-death-popup');
-        if (closeBtn) {
-            closeBtn.onclick = () => {
-                popup.style.display = 'none';
-            };
-        }
-    }
-
-    private setupVotingView() {
+    private renderVotingView() {
         const state = getState();
         const me = state.players.find(p => p.playerUUID === state.playerUUID);
-        
-        // If I am dead, I cannot vote
-        if (me && !me.isAlive) {
-            this.hasVoted = true; 
-            const controls = document.querySelector('#day-voting-view .manager-controls') as HTMLElement;
+        const isDead = me && !me.isAlive;
+        const hasVoted = !!state.myVoteTargetUUID;
+
+        const controls = document.getElementById('day-voting-controls');
+        const waitingMsg = document.getElementById('vote-confirmed-message');
+        const listEl = document.getElementById('day-vote-list');
+
+        if (isDead) {
             if (controls) controls.style.display = 'none';
-            const waitingMsg = document.getElementById('vote-confirmed-message');
             if (waitingMsg) {
                 waitingMsg.style.display = 'block';
                 waitingMsg.innerHTML = '<p class="fog-text">The dead cannot vote. Observe the village...</p>';
             }
-        }
-
-        this.renderPlayerList();
-    }
-
-    private setupVotingLogic() {
-        const confirmBtn = document.getElementById('confirm-vote-btn');
-        if (confirmBtn) {
-            confirmBtn.addEventListener('click', () => {
-                if (this.selectedTargetUUID && !this.hasVoted) {
-                    socketService.vote(this.selectedTargetUUID);
-                    this.hasVoted = true;
-                    this.updateVotingUIState();
-                }
-            });
-        }
-    }
-
-    private updateVotingUIState() {
-        const controls = document.querySelector('#day-voting-view .manager-controls') as HTMLElement;
-        const waitingMsg = document.getElementById('vote-confirmed-message');
-        const listEl = document.getElementById('day-vote-list');
-
-        if (this.hasVoted) {
+            if (listEl) listEl.style.pointerEvents = 'none';
+        } else if (hasVoted) {
             if (controls) controls.style.display = 'none';
-            if (waitingMsg) waitingMsg.style.display = 'block';
+            if (waitingMsg) {
+                waitingMsg.style.display = 'block';
+                waitingMsg.innerHTML = '<p class="fog-text">Vote Cast. Waiting for others...</p>';
+            }
             if (listEl) {
                 listEl.style.pointerEvents = 'none';
                 listEl.style.opacity = '0.7';
             }
+        } else {
+            if (controls) controls.style.display = 'block';
+            if (waitingMsg) waitingMsg.style.display = 'none';
+            if (listEl) {
+                listEl.style.pointerEvents = 'auto';
+                listEl.style.opacity = '1';
+            }
         }
+
+        if (listEl) this.renderPlayerList(listEl);
     }
 
-    private renderPlayerList() {
-        const listEl = document.getElementById('day-vote-list');
-        if (!listEl) return;
-
-        const state = getState();
-        const players = state.players.filter(p => p.isAlive);
-        
-        listEl.innerHTML = players.map(p => {
-            const isMe = p.playerUUID === state.playerUUID;
-            return `
-                <li class="pixel-list-item selectable-player" data-uuid="${p.playerUUID}">
-                    <span class="player-dot alive"></span>
-                    <span class="player-name">${p.displayName}${isMe ? ' (You)' : ''}</span>
-                </li>
-            `;
-        }).join('');
-
-        // Selection logic
-        const items = listEl.querySelectorAll('.selectable-player');
-        items.forEach(item => {
-            item.addEventListener('click', () => {
-                if (this.hasVoted) return;
-
-                // Clear previous selection
-                items.forEach(i => i.classList.remove('selected'));
-                
-                // Set new selection
-                item.classList.add('selected');
-                this.selectedTargetUUID = item.getAttribute('data-uuid');
-                
-                // Enable confirm button
-                const confirmBtn = document.getElementById('confirm-vote-btn') as HTMLButtonElement;
-                if (confirmBtn) confirmBtn.disabled = false;
-            });
-        });
-    }
-
-    // --- RESULT VIEW LOGIC ---
-
-    private showResultView() {
-        const votingView = document.getElementById('day-voting-view');
-        const resultView = document.getElementById('day-result-view');
-        if (votingView) votingView.style.display = 'none';
-        if (resultView) resultView.style.display = 'block';
-
-        audioService.playNarration('end_of_day', 'overwrite');
-
-        this.renderResultData();
-
+    private renderResultView() {
         const state = getState();
         const me = state.players.find(p => p.playerUUID === state.playerUUID);
         const isDead = me && !me.isAlive;
+        const isReady = state.readyForNight;
 
-        const controls = document.querySelector('#day-result-view .manager-controls') as HTMLElement;
+        const controls = document.getElementById('day-result-controls');
         const waitingMsg = document.getElementById('night-waiting-message');
 
         if (isDead) {
@@ -198,41 +121,60 @@ export class DayPhase implements View {
                 waitingMsg.style.display = 'block';
                 waitingMsg.innerHTML = '<p class="fog-text">The dead have no say in the coming night. Waiting for the living...</p>';
             }
-            return;
+        } else if (isReady) {
+            if (controls) controls.style.display = 'none';
+            if (waitingMsg) waitingMsg.style.display = 'block';
+        } else {
+            if (controls) controls.style.display = 'block';
+            if (waitingMsg) waitingMsg.style.display = 'none';
         }
 
-        const readyBtn = document.getElementById('ready-for-night-btn');
-        if (readyBtn) {
-            // Remove old listeners
-            const newBtn = readyBtn.cloneNode(true);
-            readyBtn.parentNode?.replaceChild(newBtn, readyBtn);
+        this.renderResultData();
+    }
 
-            newBtn.addEventListener('click', () => {
-                if (!this.hasConfirmedNight) {
-                    this.hasConfirmedNight = true;
-                    socketService.readyForNight();
-                    
-                    // UI Feedback
-                    if (controls) controls.style.display = 'none';
-                    if (waitingMsg) waitingMsg.style.display = 'block';
-                }
+    private renderPlayerList(listEl: HTMLElement) {
+        const state = getState();
+        const players = state.players.filter(p => p.isAlive);
+        
+        listEl.innerHTML = players.map(p => {
+            const isMe = p.playerUUID === state.playerUUID;
+            const isSelected = this.selectedTargetUUID === p.playerUUID || state.myVoteTargetUUID === p.playerUUID;
+            return `
+                <li class="pixel-list-item selectable-player ${isSelected ? 'selected' : ''}" data-uuid="${p.playerUUID}">
+                    <span class="player-dot alive"></span>
+                    <span class="player-name">${p.displayName || 'Unnamed Player'}${isMe ? ' (You)' : ''}</span>
+                </li>
+            `;
+        }).join('');
+
+        const items = listEl.querySelectorAll('.selectable-player');
+        items.forEach(item => {
+            item.addEventListener('click', () => {
+                const me = getState().players.find(p => p.playerUUID === getState().playerUUID);
+                if (getState().myVoteTargetUUID || !me?.isAlive) return;
+
+                items.forEach(i => i.classList.remove('selected'));
+                item.classList.add('selected');
+                this.selectedTargetUUID = item.getAttribute('data-uuid');
+                
+                const confirmBtn = document.getElementById('confirm-vote-btn') as HTMLButtonElement;
+                if (confirmBtn) confirmBtn.disabled = false;
             });
-        }
+        });
     }
 
     private renderResultData() {
         const state = getState();
         const votes = state.voteResults;
         const lynchedUUID = state.votedOutUUID;
-        const players = state.players; // Note: This list might already have updated 'isAlive' status if backend sent updatePlayers
+        const players = state.players;
 
-        // 1. Show Lynched Player
         const lynchedNameEl = document.getElementById('lynched-player-name');
         const lynchTextEl = document.getElementById('lynch-result-text');
         
         if (lynchedUUID) {
             const victim = players.find(p => p.playerUUID === lynchedUUID);
-            if (lynchedNameEl) lynchedNameEl.innerText = victim ? victim.displayName : 'Unknown';
+            if (lynchedNameEl) lynchedNameEl.innerText = victim?.displayName || 'Unnamed Player';
             if (lynchTextEl) lynchTextEl.innerText = '...was sent to the gallows.';
         } else {
             if (lynchedNameEl) {
@@ -242,31 +184,22 @@ export class DayPhase implements View {
             if (lynchTextEl) lynchTextEl.innerText = '...was harmed this day.';
         }
 
-        // 2. Show Vote Breakdown
         const breakdownEl = document.getElementById('day-vote-breakdown');
         if (!breakdownEl || !votes) return;
 
-        // Group votes by Target
-        // Structure of votes: Record<voterUUID, targetUUID>
         const votesByTarget: Record<string, string[]> = {};
-        
         Object.entries(votes).forEach(([voterUUID, targetUUID]) => {
-            // targetUUID can be null (abstained/invalid), TS needs check. In JSON/Record values are explicit.
-            // But we cast to string in the next check anyway or verify existence.
             if (!targetUUID) return;
-            
             if (!votesByTarget[targetUUID]) votesByTarget[targetUUID] = [];
-            
             const voter = players.find(p => p.playerUUID === voterUUID);
-            votesByTarget[targetUUID].push(voter ? voter.displayName : 'Unknown');
+            votesByTarget[targetUUID].push(voter?.displayName || 'Unnamed Player');
         });
 
-        // Sort by number of votes
         const sortedTargets = Object.entries(votesByTarget).sort((a, b) => b[1].length - a[1].length);
 
         breakdownEl.innerHTML = sortedTargets.map(([targetUUID, voterNames]) => {
             const target = players.find(p => p.playerUUID === targetUUID);
-            const targetName = target ? target.displayName : 'Unknown';
+            const targetName = target?.displayName || 'Unnamed Player';
             const isDead = targetUUID === lynchedUUID;
 
             return `

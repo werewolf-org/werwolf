@@ -1,12 +1,11 @@
-import type { View } from '../../router';
 import distributionHtml from './role-distribution.html?raw';
 import { getState } from '../../store';
 import { socketService } from '../../socket.service';
 import { ROLES } from '@shared/roles.js';
 import { audioService } from '../../audio.service';
+import { View } from '../../base-view';
 
-export class RoleDistributionPhase implements View {
-    private container: HTMLElement | null = null;
+export class RoleDistributionPhase extends View {
 
     mount(container: HTMLElement): void {
         this.container = container;
@@ -50,9 +49,5 @@ export class RoleDistributionPhase implements View {
             if (managerUi) managerUi.style.display = 'none';
             if (waitingUi) waitingUi.style.display = 'block';
         }
-    }
-
-    unmount(): void {
-        this.container = null;
     }
 }

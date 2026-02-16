@@ -1,17 +1,100 @@
 import { GameStore } from "../store/game.store.js";
 import { type Game, type Player } from "../models.js";
 import { Role, ROLES } from '@shared/roles.js';
-import { Phase } from "@shared/models.js";
+import { Phase } from "@shared/phases.js";
 import { v4 as uuidv4 } from 'uuid';
-import type { Server } from 'socket.io';
 import { socketService } from "../socket.service.js";
-import { checkCoupleDying } from "./role.handler.js";
+import { checkCoupleDying, getWerewolfVictimUUID, getWerewolfVotes } from "./role.handler.js";
 
 export class GameManager {
     private store = GameStore.getInstance();
 
     private generateGameId(): string {
         return Math.random().toString(36).substring(2, 6).toUpperCase();
+    }
+
+    syncPlayerState(game: Game, player: Player) {
+        const socketId: string | null = player.socketId;
+        if(!socketId) throw new Error(`Player ${player.playerUUID} in Game ${game.gameId} does not have a socketID (${player.socketId})`);
+
+        const redLadySleepoverUUID = player.role === Role.RED_LADY && player.nightAction ? (player.nightAction as any).sleepoverUUID : null;
+        const seerRevealUUID = player.role === Role.SEER && player.nightAction ? (player.nightAction as any).revealUUID : null;
+        const seerRevealRole = player.role === Role.SEER && player.nightAction ? (player.nightAction as any).revealedRole : null;
+
+        // Aggregate werewolf votes and victim ONLY for Werewolves and Witch
+        let werewolfVotes: Record<string, string> | null = null;
+        let werewolfVictim: string | null = null;
+        if (player.isAlive && player.role === Role.WEREWOLF) werewolfVotes = getWerewolfVotes(game);
+        if (player.isAlive && (player.role === Role.WEREWOLF || player.role === Role.WITCH)) werewolfVictim = getWerewolfVictimUUID(game);
+
+        // Cupid confirmation status
+        let cupidFirstLoverConfirmed = false;
+        let cupidSecondLoverConfirmed = false;
+        let cupidFirstLoverUUID = null;
+        let cupidSecondLoverUUID = null;
+        const cupid = game.players.find((p) => p.role == Role.CUPID);
+        if(cupid && cupid.nightAction) {
+            const firstLover = game.players.find(p => p.playerUUID === (cupid.nightAction as any).firstPlayerUUID);
+            const secondLover = game.players.find(p => p.playerUUID === (cupid.nightAction as any).secondPlayerUUID);
+            if(player.playerUUID === firstLover?.playerUUID || player.playerUUID === secondLover?.playerUUID || player.playerUUID === cupid.playerUUID) {
+                cupidFirstLoverConfirmed = firstLover?.lovePartnerConfirmed ?? false;
+                cupidSecondLoverConfirmed = secondLover?.lovePartnerConfirmed ?? false;
+                cupidFirstLoverUUID = firstLover?.playerUUID;
+                cupidSecondLoverUUID = secondLover?.playerUUID;
+            }
+        }
+
+        const localPlayerList = game.players.map(p => ({
+            playerUUID: p.playerUUID,
+            displayName: p.displayName,
+            isSheriff: p.isSheriff,
+            isAlive: p.isAlive,
+            role: p.isAlive ? null : p.role
+        }));
+
+        const localStatePatch: object = {
+            gameId: game.gameId,
+            playerUUID: player.playerUUID,
+            phase: game.phase,
+            activeNightRole: game.activeNightRole,
+            players: localPlayerList,
+            lynchDone: game.lynchDone,
+
+            displayName: player.displayName,
+            isManager: player.playerUUID === game.managerUUID,
+            role: player.role,
+            lovePartnerUUID: player.lovePartner,
+            lovePartnerConfirmed: player.lovePartnerConfirmed,
+            readyForNight: player.readyForNight,
+            myVoteTargetUUID: player.voteTargetUUID,
+
+            voteResults: this.getVoteResults(game),
+            votedOutUUID: game.votedOutUUID,
+
+            werewolfVotes: werewolfVotes,
+            werewolfVictim: werewolfVictim,
+
+            witchUsedHealingPotion: player.usedHealingPotion,
+            witchUsedKillingPotion: player.usedKillingPotion,
+
+            redLadySleepoverUUID: redLadySleepoverUUID,
+
+            seerRevealUUID: seerRevealUUID,
+            seerRevealRole: seerRevealRole,
+
+            cupidFirstLoverUUID: cupidFirstLoverUUID,
+            cupidSecondLoverUUID: cupidSecondLoverUUID,
+            cupidFirstLoverConfirmed: cupidFirstLoverConfirmed,
+            cupidSecondLoverConfirmed: cupidSecondLoverConfirmed,
+        }
+        socketService.syncState(socketId, localStatePatch);
+    }
+
+    broadcastSyncState(gameId: string) {
+        const game = this.store.getGame(gameId);
+        if(!game) throw new Error(`Game with ID ${gameId} not found!`)
+        const playersWithSocket = game.players.filter((player) => player.socketId);
+        playersWithSocket.forEach((player) => this.syncPlayerState(game, player));
     }
 
     createGame(socketId: string): void {
@@ -24,29 +107,33 @@ export class GameManager {
             round: 0,
             phase: Phase.LOBBY,
             activeNightRole: null,
-            lynchResults: null
+            lynchDone: false,
+            votedOutUUID: null,
         }
 
         socketService.notifyGameCreated(socketId, gameId);
         this.store.createGame(newGame);
         socketService.joinRoom(socketId, gameId);
-        this.broadcastPlayerUpdate(newGame);
         console.log(`Game ${gameId} was created`);
     }
 
     joinGame(socketId: string, gameId: string, playerUUID: string): void {
         const game = this.store.getGame(gameId);
         if(!game) throw new Error(`Game with ID ${gameId} not found!`)
-        
+
         const newUUID = uuidv4();
         // fork: either JOIN or REJOIN game
-        // TODO: make it also possible to RE-JOIN in the Lobby
-        if(game.phase === Phase.LOBBY) this.newPlayer(game.gameId, socketId, newUUID);
-        else this.rejoinGame(game.gameId, playerUUID, socketId);
+        if(game.phase === Phase.LOBBY) {
+            this.newPlayer(game.gameId, socketId, newUUID);
+            playerUUID = newUUID;
+        }
         
-        socketService.joinRoom(socketId, game.gameId);
-        this.broadcastPlayerUpdate(game);
+        const playerWithID = game.players.find((player) => player.playerUUID == playerUUID);
+        if(!playerWithID) throw new Error(`Player with UUID ${playerUUID} not found in Game`);
+        playerWithID.socketId = socketId;
 
+        socketService.joinRoom(socketId, game.gameId);
+        this.broadcastSyncState(game.gameId);
         console.log(`Player ${playerUUID} joined game ${gameId}`);
     }
     
@@ -75,52 +162,8 @@ export class GameManager {
         socketService.notifyPlayerJoined(socketId, {
           gameId: gameId,
           playerUUID: playerUUID,
-          activeNightRole: game.activeNightRole,
-          isManager: isManager
         })
         this.store.updateGame(game);
-    }
-
-
-    private rejoinGame(gameId: string, playerUUID: string, socketId: string): void {
-        const game = this.store.getGame(gameId);
-        if(!game) throw new Error(`Game with ID ${gameId} not found!`);
-        const playerWithID = game.players.find((player) => player.playerUUID == playerUUID);
-        if(!playerWithID) throw new Error(`Player with UUID ${playerUUID} not found in Game`);
-        playerWithID.socketId = socketId;
-
-        const playerList = game.players.map(p => ({
-            playerUUID: p.playerUUID,
-            displayName: p.displayName,
-            isAlive: p.isAlive,
-            role: p.isAlive ? null : p.role
-        }));
-        socketService.notifyPlayerRejoined(socketId, {
-            gameId: game.gameId,
-            playerUUID: playerUUID,
-
-            isManager: playerWithID.playerUUID === game.managerUUID,
-            displayName: playerWithID.displayName,
-            role: playerWithID.role,
-            lovePartnerUUID: playerWithID.lovePartner,
-            phase: game.phase,
-            activeNightRole: game.activeNightRole,
-            players: playerList,
-
-            voteResults: game.lynchResults?.voteResults ?? null,
-            votedOutUUID: game.lynchResults?.votedOutUUID ?? null
-        });
-        this.store.updateGame(game);
-    }
-
-    broadcastPlayerUpdate(game: Game): void {
-        const playerList = game.players.map(p => ({
-            playerUUID: p.playerUUID,
-            displayName: p.displayName,
-            isAlive: p.isAlive,
-            role: p.isAlive ? null : p.role
-        }));
-        socketService.notifyPlayerUpdate(game.gameId, playerList);
     }
 
     changeName(gameId: string, playerUUID: string, playerName: string): void {
@@ -130,8 +173,8 @@ export class GameManager {
         const playerWithID = game.players.find((player) => player.playerUUID == playerUUID);
         if(!playerWithID) throw new Error(`Player with UUID ${playerUUID} not found in Game`);
         playerWithID.displayName = playerName;
-        this.broadcastPlayerUpdate(game);
         console.log(`Player ${playerUUID} changed name to ${playerName}`)
+        this.broadcastSyncState(gameId);
         this.store.updateGame(game);
     }
 
@@ -141,8 +184,7 @@ export class GameManager {
         if(game.phase !== Phase.LOBBY) throw new Error(`Game ${gameId} is already in progress, so joining cannot be closed.`);
 
         game.phase = Phase.ROLE_SELECTION;
-        this.broadcastPlayerUpdate(game);
-        socketService.notifyPhaseUpdate(game.gameId, game.phase);
+        this.broadcastSyncState(gameId);
         this.store.updateGame(game);
     }
 
@@ -185,14 +227,8 @@ export class GameManager {
         });
 
         game.phase = Phase.DISTRIBUTION;
-        game.players.forEach(player => {
-            if (player.socketId && player.role) {
-                socketService.notifyRoleAssigned(player.socketId, player.role);
-            } else {
-                throw new Error(`Player ${player.playerUUID} does not have a socketId (${player.socketId}) or a role (${player.role})`);
-            }
-        });
         console.log(`Roles distributed for game ${gameId}`);
+        this.broadcastSyncState(gameId);
         this.store.updateGame(game);
     }
 
@@ -202,10 +238,9 @@ export class GameManager {
         if(game.phase !== Phase.DISTRIBUTION) throw new Error(`Game ${gameId} is not currently in the right phase to be started!`);
         game.phase = Phase.NIGHT;
         game.activeNightRole = this.getFirstToWakeUp(game);
-        socketService.notifyPhaseUpdate(game.gameId, Phase.NIGHT);
-        if(game.activeNightRole) socketService.notifyNextActiveRole(game.gameId, game.activeNightRole);
-        else throw new Error(`Game ${game.gameId} does not have an active night role (${game.activeNightRole}), although the game started!`);
+        if(!game.activeNightRole) throw new Error(`Game ${game.gameId} does not have an active night role (${game.activeNightRole}), although the game started!`);
         console.log(`Game ${gameId} started...`)
+        this.broadcastSyncState(gameId);
         this.store.updateGame(game);
     }
 
@@ -251,13 +286,15 @@ export class GameManager {
         const player = this.getPlayerFromNight(game, socketId, role);
 
         handler(game, player, ...handlerArgs);
+        this.broadcastSyncState(gameId);
         this.store.updateGame(game);
     }
 
     vote(gameId: string, socketId: string, targetUUID: string): void {
         const game = this.store.getGame(gameId);
         if(!game) throw new Error(`Game with ID ${gameId} not found!`)
-        if(game.phase !== Phase.DAY) throw new Error(`Game with ID ${gameId} is not in Phase DAY, so voting cannot happen right now`)
+        if(game.phase !== Phase.DAY) throw new Error(`Game with ID ${gameId} is not in Phase DAY, so voting cannot happen right now`);
+        if(game.lynchDone) throw new Error(`Cannot vote in Game ${game.gameId} since lynch is already done!`);
         
         const player = game.players.find((player) => player.socketId === socketId);
         if(!player) throw new Error(`Player with socketId ${socketId} not found in ${gameId}`);
@@ -266,12 +303,9 @@ export class GameManager {
         player.voteTargetUUID = targetUUID;
 
         const everyoneVoted: boolean = this.checkIfEveryoneVoted(game);
-        if(everyoneVoted) {
-            const votedOutPlayer = this.resolveVoting(game);
-            this.broadcastPlayerUpdate(game);
-            console.log(`Voting Resolved in Game ${gameId}. Player voted out: ${votedOutPlayer?.playerUUID}`)
-        }
+        if(everyoneVoted) this.resolveVoting(game);
 
+        this.broadcastSyncState(gameId);
         this.store.updateGame(game);
     }
 
@@ -282,23 +316,23 @@ export class GameManager {
         const playersWhoVotes = alivePlayers.filter((player) => player.voteTargetUUID !== null);
         return playersWhoVotes.length === alivePlayers.length;
     }
-    
-    private resolveVoting(game: Game): Player | null {
-        if(game.phase !== Phase.DAY) throw new Error(`Game with ID ${game.gameId} is not in Phase DAY, so voting cannot happen right now`)
 
-        const voteRecord: Record<string, string | null> = Object.fromEntries(
+    private getVoteResults(game: Game): Record<string, string | null> | null {
+        if(game.phase !== Phase.DAY) return null;
+        return Object.fromEntries(
             game.players
                 .filter(p => p.playerUUID !== null)
                 .map(p => [p.playerUUID, p.voteTargetUUID])
         );
-        
+    }
+
+    private getVotedOut(game: Game): Player | null {
         const votes: Record<string, number> = {}
         const alivePlayers = game.players.filter((player) => player.isAlive)
-        alivePlayers.forEach((player) => {
-            if(!player.voteTargetUUID) throw new Error(`Player with player UUID ${player.playerUUID} did not vote yet, resolving not possible`)
-            votes[player.voteTargetUUID] = (votes[player.voteTargetUUID] ?? 0) + 1;
-        });
-
+        if(alivePlayers.length === 0) return null;
+        for (const player of alivePlayers) {
+            if(player.voteTargetUUID) votes[player.voteTargetUUID] = (votes[player.voteTargetUUID] ?? 0) + 1;
+        }
         const entries = Object.entries(votes);
         if (entries.length === 0) throw new Error("No votes present");
 
@@ -315,21 +349,23 @@ export class GameManager {
         }
 
         const electedPlayer = alivePlayers.find((player) => player.playerUUID === electedPlayerUUID) ?? null;
+        return electedPlayer;
+    }
+    
+    private resolveVoting(game: Game): void {
+        if(game.phase !== Phase.DAY) throw new Error(`Game with ID ${game.gameId} is not in Phase DAY, so voting cannot happen right now`);
+        if(!game.players.find((player) => player.voteTargetUUID)) throw new Error(`Not all players in Game ${game.gameId} have voted!`);
+
+        const electedPlayer = this.getVotedOut(game); 
         if(electedPlayer) {
             electedPlayer.isAlive = false;
             checkCoupleDying(game, electedPlayer.playerUUID);
         }
 
         // reset votes
-        game.players.forEach((player) => player.voteTargetUUID = null);
-
-        game.lynchResults = {voteResults: voteRecord, votedOutUUID: electedPlayer?.playerUUID ?? null};
-        socketService.notifyVotingResolved(game.gameId, electedPlayer?.playerUUID ?? null, voteRecord);
-
-        // turn to night
-        this.store.updateGame(game);
-        return electedPlayer;
-
+        game.lynchDone = true;
+        game.votedOutUUID = electedPlayer?.playerUUID ?? null;
+        console.log(`Voting Resolved in Game ${game.gameId}. Player voted out: ${electedPlayer?.playerUUID}`)
     }
 
     readyForNight(gameId: string, socketId: string) {
@@ -343,17 +379,17 @@ export class GameManager {
 
         const alivePlayers = game.players.filter((player) => player.isAlive)
         const readyPlayers = alivePlayers.filter((player) => player.readyForNight);
-        console.log(socketId, alivePlayers.length, readyPlayers.length);
         if(alivePlayers.length === readyPlayers.length) {
             // go to night phase
             game.round = game.round + 1;
             game.phase = Phase.NIGHT;
             game.activeNightRole = this.getFirstToWakeUp(game);
+            game.players.forEach((player) => player.voteTargetUUID = null);
+            game.lynchDone = false;
             if(!game.activeNightRole) throw new Error(`Game with ID ${gameId} cannot go to Night, no first night role`)
-            socketService.notifyNextActiveRole(game.gameId, game.activeNightRole);
-
             game.players.forEach((player) => player.readyForNight = false);
         }
+        this.broadcastSyncState(gameId);
         this.store.updateGame(game);
     }
 

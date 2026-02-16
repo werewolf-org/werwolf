@@ -1,9 +1,6 @@
 import { GamePage } from './pages/game';
 import { StartPage } from './pages/start';
-
-export interface View {
-  mount: (container: HTMLElement) => void;
-}
+import { View } from './base-view';
 
 // Simple router to handle / and /#/game/:id
 let currentView: View | null = null;
@@ -12,6 +9,12 @@ export const render = () => {
   const hash = window.location.hash;
   const app = document.getElementById('app');
   if (!app) return;
+
+  // Cleanup previous view
+  if (currentView) {
+    currentView.unmount();
+  }
+  currentView = null;
 
   app.innerHTML = ''; // Clear current content
 

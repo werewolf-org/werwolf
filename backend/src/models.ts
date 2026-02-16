@@ -1,5 +1,5 @@
 import { Role } from '@shared/roles.js'
-import { Phase } from '@shared/models.js';
+import { Phase } from '@shared/phases.js';
 
 export interface Player {
     playerUUID: string | null,
@@ -7,7 +7,7 @@ export interface Player {
     displayName: string,
     role: Role | null,
     voteTargetUUID: string | null, // who they vote for
-    nightAction: object | null,
+    nightAction: NightAction | null,
     isAlive: boolean,
     isSheriff: boolean,
     lovePartner: string | null,
@@ -25,12 +25,28 @@ export interface Game {
     phase: Phase,
     activeNightRole: Role | null,
 
-
-
-    lynchResults: {voteResults: Record<string, string | null> , votedOutUUID: string | null} | null;
+    lynchDone: boolean,
+    votedOutUUID: string | null,
 }
 
-// aggregated state
+export interface NightAction {
+    // werewolf
+    targetUUID?: string | null,
+    // seer
+    revealUUID?: string,
+    revealedRole?: Role,
+    // witch
+    heal?: boolean,
+    killUUID?: string | null,
+    // cupid
+    firstPlayerUUID?: string,
+    secondPlayerUUID?: string,
+    // red lady
+    sleepoverUUID?: string
+}
+
+// # aggregated state (for frontend UI)
+
 // voteResults: Record<string, string | null> | null
 // votedOutUUID: string | null
 // -> aggregated from Player.voteTargetUUID
@@ -41,3 +57,10 @@ export interface Game {
 
 // redLadySleepoverUUID: string | null
 // -> aggregated from Player.nightAction
+
+// cupidFirstLoverUUID: string | null
+// cupidSecondLoverUUID: string | null
+// -> aggregated from Player.nightAction
+
+// witchUsedHealingPotion: boolean
+// witchUsedKillingPotion: boolean

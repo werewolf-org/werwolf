@@ -1,18 +1,16 @@
-import type { View } from '../../router';
 import selectionHtml from './role-selection.html?raw';
 import { getState } from '../../store';
 import { socketService } from '../../socket.service';
 import { Role, ROLES } from '@shared/roles.js';
 import rsaData from '../../data/role-presets.json';
-
+import { View } from '../../base-view';
 interface RoleCount {
     role: Role;
     name: string;
     count: number;
 }
 
-export class RoleSelectionPhase implements View {
-    private container: HTMLElement | null = null;
+export class RoleSelectionPhase extends View {
     private roles: RoleCount[] = [];
     private playerCnt: number = 0;
 
@@ -155,9 +153,5 @@ export class RoleSelectionPhase implements View {
 
         role.count += delta;
         this.renderList();
-    }
-
-    unmount(): void {
-        this.container = null;
     }
 }

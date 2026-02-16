@@ -1,65 +1,80 @@
-import type { View } from '../../router';
+import { View } from '../../base-view';
 import seerHtml from './seer.html?raw';
-import { getState, setState, subscribeSelector } from '../../store';
+import { getState, subscribeSelector } from '../../store';
 import { socketService } from '../../socket.service';
 import { Role, ROLES } from '@shared/roles.js';
 
-export class SeerPhase implements View {
-    private container: HTMLElement | null = null;
+export class SeerPhase extends View {
     private selectedTargetUUID: string | null = null;
-    private hasActed: boolean = false;
 
     mount(container: HTMLElement): void {
         this.container = container;
         this.container.innerHTML = seerHtml;
 
-        // Subscribe to reveal state changes
-        subscribeSelector(s => s.seerReveal, () => {
-            this.updateView();
-        });
+        // Reactive Subscriptions
+        this.unsubs.push(subscribeSelector(s => s.seerRevealUUID, () => this.updateUI()));
+        this.unsubs.push(subscribeSelector(s => s.seerRevealRole, () => this.updateUI()));
+        this.unsubs.push(subscribeSelector(s => s.players, () => this.updateUI()));
 
         this.setupSelectionListeners();
         this.setupDismissListener();
 
         // Initial render
-        this.updateView();
+        this.updateUI();
     }
 
-    private updateView() {
+    private updateUI() {
         const state = getState();
-        const reveal = state.seerReveal;
+        const revealUUID = state.seerRevealUUID;
+        const revealRole = state.seerRevealRole;
         
         const selectionView = document.getElementById('seer-selection-view');
         const revealView = document.getElementById('seer-reveal-view');
+        const controls = document.getElementById('seer-controls');
+        const waitingMsg = document.getElementById('seer-waiting-message');
+        const listEl = document.getElementById('seer-target-list');
 
-        if (reveal) {
-            // SHOW REVEAL
+        if (revealUUID && revealRole) {
+            // STATE: REVEAL
             if (selectionView) selectionView.style.display = 'none';
             if (revealView) {
                 revealView.style.display = 'block';
-                this.renderRevealData(reveal);
+                this.renderRevealData(revealUUID, revealRole);
+            }
+        } else if (revealUUID) {
+            // STATE: WAITING FOR SERVER ROLE
+            if (controls) controls.style.display = 'none';
+            if (waitingMsg) waitingMsg.style.display = 'block';
+            if (listEl) {
+                listEl.style.pointerEvents = 'none';
+                listEl.style.opacity = '0.7';
             }
         } else {
-            // SHOW SELECTION
+            // STATE: SELECTION
             if (selectionView) selectionView.style.display = 'block';
             if (revealView) revealView.style.display = 'none';
-            
+            if (controls) controls.style.display = 'block';
+            if (waitingMsg) waitingMsg.style.display = 'none';
+            if (listEl) {
+                listEl.style.pointerEvents = 'auto';
+                listEl.style.opacity = '1';
+            }
             this.renderPlayerList();
         }
     }
 
-    private renderRevealData(reveal: { playerUUID: string, role: Role }) {
+    private renderRevealData(playerUUID: string, role: Role) {
         const state = getState();
-        const targetPlayer = state.players.find(p => p.playerUUID === reveal.playerUUID);
-        const targetName = targetPlayer ? targetPlayer.displayName : 'Unknown Player';
-        const roleDef = ROLES[reveal.role];
+        const targetPlayer = state.players.find(p => p.playerUUID === playerUUID);
+        const targetName = targetPlayer?.displayName || 'Unnamed Player';
+        const roleDef = ROLES[role];
 
         const imgEl = document.getElementById('reveal-role-image') as HTMLImageElement;
         const roleNameEl = document.getElementById('reveal-role-name');
         const playerNameEl = document.getElementById('reveal-player-name');
 
-        if (imgEl) imgEl.src = `/icons/${reveal.role.toUpperCase()}.png`;
-        if (roleNameEl) roleNameEl.innerText = roleDef?.displayName || reveal.role;
+        if (imgEl) imgEl.src = `/icons/${role.toUpperCase()}.png`;
+        if (roleNameEl) roleNameEl.innerText = roleDef?.displayName || role;
         if (playerNameEl) playerNameEl.innerText = `${targetName} is...`;
     }
 
@@ -67,10 +82,7 @@ export class SeerPhase implements View {
         const btn = document.getElementById('dismiss-reveal-btn');
         if (btn) {
             btn.addEventListener('click', () => {
-                // Tell backend we are done
                 socketService.seerConfirmed();
-                // Clear the reveal state. 
-                setState({ seerReveal: null });
             });
         }
     }
@@ -79,21 +91,8 @@ export class SeerPhase implements View {
         const confirmBtn = document.getElementById('confirm-seer-target-btn');
         if (confirmBtn) {
             confirmBtn.addEventListener('click', () => {
-                if (this.selectedTargetUUID && !this.hasActed) {
-                    this.hasActed = true;
+                if (this.selectedTargetUUID) {
                     socketService.revealRole(this.selectedTargetUUID);
-                    
-                    // Show waiting state immediately
-                    const controls = document.querySelector('.manager-controls') as HTMLElement;
-                    const waitingMsg = document.getElementById('seer-waiting-message');
-                    const listEl = document.getElementById('seer-target-list');
-
-                    if (controls) controls.style.display = 'none';
-                    if (waitingMsg) waitingMsg.style.display = 'block';
-                    if (listEl) {
-                        listEl.style.pointerEvents = 'none';
-                        listEl.style.opacity = '0.7';
-                    }
                 }
             });
         }
@@ -104,30 +103,27 @@ export class SeerPhase implements View {
         if (!listEl) return;
 
         const state = getState();
-        // Filter out myself (Seer) and dead players
         const players = state.players.filter(p => p.isAlive && p.playerUUID !== state.playerUUID);
         
-        listEl.innerHTML = players.map(p => `
-            <li class="pixel-list-item selectable-player" data-uuid="${p.playerUUID}">
-                <span class="player-dot alive"></span>
-                <span class="player-name">${p.displayName}</span>
-            </li>
-        `).join('');
+        listEl.innerHTML = players.map(p => {
+            const isSelected = this.selectedTargetUUID === p.playerUUID;
+            return `
+                <li class="pixel-list-item selectable-player ${isSelected ? 'selected' : ''}" data-uuid="${p.playerUUID}">
+                    <span class="player-dot alive"></span>
+                    <span class="player-name">${p.displayName || 'Unnamed Player'}</span>
+                </li>
+            `;
+        }).join('');
 
-        // Selection logic
         const items = listEl.querySelectorAll('.selectable-player');
         items.forEach(item => {
             item.addEventListener('click', () => {
-                if (this.hasActed) return;
+                if (getState().seerRevealUUID) return;
 
-                // Clear previous selection
                 items.forEach(i => i.classList.remove('selected'));
-                
-                // Set new selection
                 item.classList.add('selected');
                 this.selectedTargetUUID = item.getAttribute('data-uuid');
                 
-                // Enable confirm button
                 const confirmBtn = document.getElementById('confirm-seer-target-btn') as HTMLButtonElement;
                 if (confirmBtn) confirmBtn.disabled = false;
             });

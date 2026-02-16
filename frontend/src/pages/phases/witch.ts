@@ -1,71 +1,73 @@
-import type { View } from '../../router';
+import { View } from '../../base-view';
 import witchHtml from './witch.html?raw';
-import { getState, setState, subscribeSelector } from '../../store';
+import { getState, subscribeSelector } from '../../store';
 import { socketService } from '../../socket.service';
 
-export class WitchPhase implements View {
-    private container: HTMLElement | null = null;
-    private hasConfirmed: boolean = false;
+export class WitchPhase extends View {
 
     mount(container: HTMLElement): void {
         this.container = container;
         this.container.innerHTML = witchHtml;
         
-        subscribeSelector(s => s.witchData, () => {
-            this.renderWitchView();
-        });
+        // Reactive Subscriptions
+        this.unsubs.push(subscribeSelector(s => s.werewolfVictim, () => this.updateUI()));
+        this.unsubs.push(subscribeSelector(s => s.witchUsedHealingPotion, () => this.updateUI()));
+        this.unsubs.push(subscribeSelector(s => s.witchUsedKillingPotion, () => this.updateUI()));
+        this.unsubs.push(subscribeSelector(s => s.players, () => this.updateUI()));
 
         this.setupListeners();
-        this.renderWitchView();
+        
+        // Initial render
+        this.updateUI();
     }
 
-    private renderWitchView() {
+    private updateUI() {
         const state = getState();
-        const data = state.witchData;
-        if (!data) return;
+        const victimUUID = state.werewolfVictim;
+        const usedHeal = state.witchUsedHealingPotion;
+        const usedKill = state.witchUsedKillingPotion;
 
         // 1. Reveal Victim
         const victimMsg = document.getElementById('witch-victim-msg');
         const victimReveal = document.getElementById('witch-victim-reveal');
         
-        if (data.victimUUID) {
-            const victim = state.players.find(p => p.playerUUID === data.victimUUID);
-            if (victimReveal) victimReveal.innerText = victim ? victim.displayName : 'Unknown';
+        if (victimUUID) {
+            const victim = state.players.find(p => p.playerUUID === victimUUID);
+            if (victimReveal) victimReveal.innerText = victim?.displayName || 'Unnamed Player';
+            if (victimMsg) victimMsg.innerText = "The Werewolves have chosen a victim...";
         } else {
             if (victimMsg) victimMsg.innerText = "The Werewolves were peaceful tonight. No one was attacked.";
             if (victimReveal) victimReveal.innerText = "No One";
         }
 
-        // 2. Heal Potion
+        // 2. Heal Potion UI
         const healBtn = document.getElementById('use-heal-btn') as HTMLButtonElement;
         const healUsedMsg = document.getElementById('heal-used-msg');
+        const healControls = document.getElementById('heal-controls');
         
-        if (data.usedHealingPotion) {
-            if (healBtn) healBtn.disabled = true;
-            if (healUsedMsg) {
-                healUsedMsg.style.display = 'block';
-                healUsedMsg.innerText = "Potion already used this game.";
-            }
-        } else if (!data.victimUUID) {
-            // No one to heal
-            if (healBtn) healBtn.disabled = true;
+        if (usedHeal) {
+            if (healControls) healControls.style.display = 'none';
+            if (healUsedMsg) healUsedMsg.style.display = 'block';
+        } else {
+            if (healControls) healControls.style.display = 'flex';
+            if (healUsedMsg) healUsedMsg.style.display = 'none';
+            if (healBtn) healBtn.disabled = !victimUUID; // Can't heal if no victim
         }
 
-        // 3. Kill Potion
-        const killBtn = document.getElementById('use-kill-btn') as HTMLButtonElement;
+        // 3. Kill Potion UI
         const killUsedMsg = document.getElementById('kill-used-msg');
+        const killControls = document.getElementById('kill-controls');
         const killSelection = document.getElementById('witch-kill-selection');
         
-        if (data.usedKillingPotion) {
-            if (killBtn) killBtn.disabled = true;
+        if (usedKill) {
+            if (killControls) killControls.style.display = 'none';
+            if (killUsedMsg) killUsedMsg.style.display = 'block';
             if (killSelection) killSelection.style.display = 'none';
-            if (killUsedMsg) {
-                killUsedMsg.style.display = 'block';
-                killUsedMsg.innerText = "Potion already used this game.";
-            }
+        } else {
+            if (killControls) killControls.style.display = 'flex';
+            if (killUsedMsg) killUsedMsg.style.display = 'none';
+            this.renderKillList();
         }
-
-        this.renderKillList();
     }
 
     private setupListeners() {
@@ -75,10 +77,9 @@ export class WitchPhase implements View {
 
         if (healBtn) {
             healBtn.addEventListener('click', () => {
-                const data = getState().witchData;
-                if (data && data.victimUUID) {
+                const state = getState();
+                if (!state.witchUsedHealingPotion && state.werewolfVictim) {
                     socketService.usePotion('HEAL', null);
-                    // UI deactivation happens via store subscription
                 }
             });
         }
@@ -94,17 +95,13 @@ export class WitchPhase implements View {
 
         if (confirmBtn) {
             confirmBtn.addEventListener('click', () => {
-                if (!this.hasConfirmed) {
-                    this.hasConfirmed = true;
-                    socketService.witchConfirms();
-                    setState({witchData: null});
-                    
-                    // Show waiting UI
-                    const controls = document.querySelector('.manager-controls') as HTMLElement;
-                    const waitingMsg = document.getElementById('witch-waiting-message');
-                    if (controls) controls.style.display = 'none';
-                    if (waitingMsg) waitingMsg.style.display = 'block';
-                }
+                socketService.witchConfirms();
+                
+                // Show waiting UI
+                const controls = confirmBtn.closest('.manager-controls') as HTMLElement;
+                const waitingMsg = document.getElementById('witch-waiting-message');
+                if (controls) controls.style.display = 'none';
+                if (waitingMsg) waitingMsg.style.display = 'block';
             });
         }
     }
@@ -114,24 +111,20 @@ export class WitchPhase implements View {
         if (!listEl) return;
 
         const state = getState();
-        // Witch can kill anyone alive except themselves
         const players = state.players.filter(p => p.isAlive && p.playerUUID !== state.playerUUID);
         
         listEl.innerHTML = players.map(p => `
             <li class="pixel-list-item selectable-player" data-uuid="${p.playerUUID}">
                 <span class="player-dot alive"></span>
-                <span class="player-name">${p.displayName}</span>
+                <span class="player-name">${p.displayName || 'Unnamed Player'}</span>
             </li>
         `).join('');
 
         const items = listEl.querySelectorAll('.selectable-player');
         items.forEach(item => {
             item.addEventListener('click', () => {
-                if (this.hasConfirmed) return;
+                if (getState().witchUsedKillingPotion) return;
 
-                items.forEach(i => i.classList.remove('selected'));
-                item.classList.add('selected');
-                
                 const targetUUID = item.getAttribute('data-uuid');
                 if (targetUUID) {
                     socketService.usePotion('KILL', targetUUID);

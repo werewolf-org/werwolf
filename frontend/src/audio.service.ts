@@ -79,7 +79,7 @@ export class AudioService {
         const state = getState();
         if (!state.isManager) return;
 
-        const path = `/sounds/${fileName}.mp3`;
+        const path = `/sounds/atmosphere/${fileName}.mp3`;
         if (this.atmosphereAudio.src.includes(path)) return;
 
         this.atmosphereAudio.src = path;
@@ -97,7 +97,7 @@ export class AudioService {
             if (!state.isManager) return;
         }
 
-        const sfx = new Audio(`/sounds/${fileName}.mp3`);
+        const sfx = new Audio(`/sounds/sfx/${fileName}.mp3`);
         sfx.volume = 0.8;
         sfx.play().catch(e => console.warn("SFX autoplay blocked:", e));
     }

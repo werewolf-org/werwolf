@@ -1,4 +1,4 @@
-import type { View } from '../../router';
+import { View } from '../../base-view';
 import nightHtml from './night.html?raw';
 import { subscribeSelector, getState } from '../../store';
 import { Role, ROLES } from '@shared/roles.js';
@@ -9,29 +9,35 @@ import { WitchPhase } from './witch';
 import { CupidPhase } from './cupid';
 import { audioService } from '../../audio.service';
 
-export class NightPhase implements View {
-    private container: HTMLElement | null = null;
+export class NightPhase extends View {
     private currentSubView: View | null = null;
 
     mount(container: HTMLElement): void {
         this.container = container;
         this.container.innerHTML = nightHtml;
 
-        // Subscribe to changes in the active role and the player's own role
-        subscribeSelector(s => s.activeNightRole, () => {
-            this.playRoleWakingAudio();
+        // Reactive Subscriptions
+        this.unsubs.push(subscribeSelector(s => s.activeNightRole, (role) => {
+            if (role) this.playRoleWakingAudio(role);
             this.updateNightView();
-        });
-        subscribeSelector(s => s.role, () => this.updateNightView());
-        subscribeSelector(s => s.lovePartnerUUID, () => this.updateNightView());
+        }));
+        
+        this.unsubs.push(subscribeSelector(s => s.players, () => this.updateNightView()));
+        this.unsubs.push(subscribeSelector(s => s.role, () => this.updateNightView()));
+        this.unsubs.push(subscribeSelector(s => s.lovePartnerUUID, () => this.updateNightView()));
 
         // Initial render
         this.updateNightView();
     }
 
-    private playRoleWakingAudio() {
-        const role = getState().activeNightRole;
-        audioService.playNarration('close_your_eyes', 'overwrite');
+    unmount(): void {
+        super.unmount();
+        if (this.currentSubView) {
+            this.currentSubView.unmount();
+        }
+    }
+
+    private playRoleWakingAudio(role: Role) {
         switch(role) {
             case Role.CUPID: audioService.playNarration('cupid_wakes'); break;
             case Role.RED_LADY: audioService.playNarration('red_lady_wakes'); break;
@@ -57,13 +63,13 @@ export class NightPhase implements View {
         const turnDisplay = document.getElementById('night-current-turn-display');
         const deadTurnDisplay = document.getElementById('night-dead-turn-display');
 
-        // Reset all displays first (clean slate)
+        // Reset all displays first
         if (actionContainer) actionContainer.style.display = 'none';
         if (sleepView) sleepView.style.display = 'none';
         if (errorView) errorView.style.display = 'none';
         if (deadView) deadView.style.display = 'none';
 
-        // 0. Update turn display text (for both living and dead)
+        // 0. Update turn display text
         if (activeRole) {
             const roleDef = ROLES[activeRole as Role];
             const text = `Current Turn: ${roleDef?.pluralName || activeRole}`;
@@ -84,7 +90,6 @@ export class NightPhase implements View {
         }
 
         // 3. Logic: Who gets to see the Action UI?
-        // It's my turn (activeRole == myRole) OR it's Cupid turn and I am a lover
         const isMyTurn = (activeRole && activeRole === ownRole);
         const isCupidTurnForLover = (activeRole === Role.CUPID && state.lovePartnerUUID !== null);
 
@@ -100,43 +105,43 @@ export class NightPhase implements View {
         const actionContainer = document.getElementById('night-action-container');
         if (!actionContainer) return;
 
-        // Check if we need to switch sub-views
         if (role === Role.WEREWOLF) {
             if (!(this.currentSubView instanceof WerewolvesPhase)) {
+                if (this.currentSubView?.unmount) this.currentSubView.unmount();
                 this.currentSubView = new WerewolvesPhase();
                 this.currentSubView.mount(actionContainer);
             }
         } else if (role === Role.SEER) {
             if (!(this.currentSubView instanceof SeerPhase)) {
+                if (this.currentSubView?.unmount) this.currentSubView.unmount();
                 this.currentSubView = new SeerPhase();
                 this.currentSubView.mount(actionContainer);
             }
         } else if (role === Role.RED_LADY) {
             if (!(this.currentSubView instanceof RedLadyPhase)) {
+                if (this.currentSubView?.unmount) this.currentSubView.unmount();
                 this.currentSubView = new RedLadyPhase();
                 this.currentSubView.mount(actionContainer);
             }
         } else if (role === Role.WITCH) {
             if (!(this.currentSubView instanceof WitchPhase)) {
+                if (this.currentSubView?.unmount) this.currentSubView.unmount();
                 this.currentSubView = new WitchPhase();
                 this.currentSubView.mount(actionContainer);
             }
         } else if (role === Role.CUPID) {
             if (!(this.currentSubView instanceof CupidPhase)) {
+                if (this.currentSubView?.unmount) this.currentSubView.unmount();
                 this.currentSubView = new CupidPhase();
                 this.currentSubView.mount(actionContainer);
             }
         } else {
-            // Default rig for other roles
+            if (this.currentSubView?.unmount) this.currentSubView.unmount();
             this.currentSubView = null;
-            
             actionContainer.innerHTML = `
                 <div class="pixel-card">
                     <h3>Wake up, ${role}!</h3>
-                    <div id="role-specific-content">
-                        <!-- Implement ${role} logic here -->
-                        <p>Performing night actions...</p>
-                    </div>
+                    <p>Performing night actions...</p>
                 </div>
             `;
         }

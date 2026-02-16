@@ -1,0 +1,8 @@
+export enum Phase {
+    LOBBY = "LOBBY",
+    ROLE_SELECTION = "ROLE_SELECTION",
+    DISTRIBUTION = "DISTRIBUTION",
+    NIGHT = "NIGHT",
+    DAY = "DAY",
+    GAME_OVER = "GAME_OVER"
+}

@@ -1,6 +1,4 @@
-import { Server, Socket } from 'socket.io';
-import { Role } from '@shared/roles.js';
-import { Phase } from '@shared/models.js';
+import { Server } from 'socket.io';
 
 export class SocketService {
     private static instance: SocketService;
@@ -54,61 +52,65 @@ export class SocketService {
 
     // --- Game Specific Emitters (Domain Logic) ---
 
+    public syncState(socketId: string, localState: object) {
+        this.emitToPlayer(socketId, 'syncState', localState)
+    }
+
     public notifyGameCreated(socketId: string, gameId: string) {
         this.emitToPlayer(socketId, 'gameCreated', { gameId });
     }
 
-    public notifyPlayerJoined(socketId: string, data: { gameId: string, playerUUID: string, isManager: boolean, activeNightRole: Role | null }) {
+    public notifyPlayerJoined(socketId: string, data: { gameId: string, playerUUID: string }) {
         this.emitToPlayer(socketId, 'joinedGame', data);
     }
 
-    public notifyPlayerRejoined(socketId: string, data: { gameId: string, playerUUID: string, isManager: boolean, role: Role | null, phase: Phase, activeNightRole: Role | null, displayName: string, lovePartnerUUID: string | null, players: any[], voteResults: Record<string, string | null> | null, votedOutUUID: string | null}) {
-        this.emitToPlayer(socketId, 'rejoinedGame', data);
-    };
+    // public notifyPlayerRejoined(socketId: string, data: { gameId: string, playerUUID: string, isManager: boolean, role: Role | null, phase: Phase, activeNightRole: Role | null, displayName: string, lovePartnerUUID: string | null, players: any[], voteResults: Record<string, string | null> | null, votedOutUUID: string | null}) {
+    //     this.emitToPlayer(socketId, 'rejoinedGame', data);
+    // };
 
-    public notifyPlayerUpdate(gameId: string, players: any[]) {
-        this.emitToRoom(gameId, 'updatePlayers', { players });
-    }
+    // public notifyPlayerUpdate(gameId: string, players: any[]) {
+    //     this.emitToRoom(gameId, 'updatePlayers', { players });
+    // }
 
-    public notifyPhaseUpdate(gameId: string, phase: Phase) {
-        this.emitToRoom(gameId, 'updatePhase', { phase });
-    }
+    // public notifyPhaseUpdate(gameId: string, phase: Phase) {
+    //     this.emitToRoom(gameId, 'updatePhase', { phase });
+    // }
 
-    public notifyRoleAssigned(socketId: string, role: Role) {
-        this.emitToPlayer(socketId, 'roleAssigned', { role });
-    }
+    // public notifyRoleAssigned(socketId: string, role: Role) {
+    //     this.emitToPlayer(socketId, 'roleAssigned', { role });
+    // }
 
-    public notifyNextActiveRole(gameId: string, role: Role) {
-        this.emitToRoom(gameId, 'nextActiveRole', { role });
-    }
+    // public notifyNextActiveRole(gameId: string, role: Role) {
+    //     this.emitToRoom(gameId, 'nextActiveRole', { role });
+    // }
 
-    public notifyVotingResolved(gameId: string, votedOutUUID: string | null, allVotes: Record<string, string | null>) {
-        this.emitToRoom(gameId, 'votingResolved', { votedOutUUID, allVotes });
-    }
+    // public notifyVotingResolved(gameId: string, votedOutUUID: string | null, allVotes: Record<string, string | null>) {
+    //     this.emitToRoom(gameId, 'votingResolved', { votedOutUUID, allVotes });
+    // }
 
     // TODO: check if game is over -> emit gameOver (with winners)
 
     // --- Role Specific Notifications ---
 
-    public notifyWerewolfVote(socketId: string, targetUUID: string) {
-        this.emitToPlayer(socketId, 'werewolfVote', { targetUUID });
-    }
+    // public notifyWerewolfVote(socketId: string, targetUUID: string) {
+    //     this.emitToPlayer(socketId, 'werewolfVote', { targetUUID });
+    // }
 
-    public notifySeerResult(socketId: string, targetUUID: string, role: Role) {
-        this.emitToPlayer(socketId, 'seePlayer', { playerUUID: targetUUID, role });
-    }
+    // public notifySeerResult(socketId: string, targetUUID: string, role: Role) {
+    //     this.emitToPlayer(socketId, 'seePlayer', { playerUUID: targetUUID, role });
+    // }
 
-    public notifyNewCouple(socketId: string) {
-        this.emitToPlayer(socketId, 'newCouple', {});
-    }
+    // public notifyNewCouple(socketId: string) {
+    //     this.emitToPlayer(socketId, 'newCouple', {});
+    // }
 
-    public notifyLovePartner(socketId: string, partnerUUID: string) {
-        this.emitToPlayer(socketId, 'lovePartner', { partnerUUID });
-    }
+    // public notifyLovePartner(socketId: string, partnerUUID: string) {
+    //     this.emitToPlayer(socketId, 'lovePartner', { partnerUUID });
+    // }
 
-    public notifyWitchData(socketId: string, victimUUID: string | null, usedHealingPotion: boolean, usedKillingPotion: boolean) {
-        this.emitToPlayer(socketId, 'witchData', { victimUUID, usedHealingPotion, usedKillingPotion});
-    }
+    // public notifyWitchData(socketId: string, victimUUID: string | null, usedHealingPotion: boolean, usedKillingPotion: boolean) {
+    //     this.emitToPlayer(socketId, 'witchData', { victimUUID, usedHealingPotion, usedKillingPotion});
+    // }
 
     // --- Error Handling ---
 
