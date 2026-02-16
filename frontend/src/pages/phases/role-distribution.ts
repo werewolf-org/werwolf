@@ -16,6 +16,7 @@ export class RoleDistributionPhase extends View {
         const isManager = state.isManager;
 
         audioService.playNarration('game_start', 'stack');
+        audioService.setAtmosphere('Suspense');
 
         // 1. Display Role Info
         if (role && ROLES[role]) {

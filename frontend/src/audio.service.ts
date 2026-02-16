@@ -12,7 +12,7 @@ export class AudioService {
     private lastPlayedPath: string | null = null;
     
     private readonly ATMOSPHERE_NORMAL_VOL = 0.5;
-    private readonly ATMOSPHERE_DUCKED_VOL = 0.3;
+    private readonly ATMOSPHERE_DUCKED_VOL = 0.25;
     private readonly NARRATION_BREAK_SEC = 1.0;
 
     private constructor() {

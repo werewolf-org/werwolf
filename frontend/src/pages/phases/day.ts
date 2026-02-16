@@ -20,6 +20,7 @@ export class DayPhase extends View {
         // Reactive Subscriptions
         this.unsubs.push(subscribeSelector(s => s.lynchDone, () => {
             audioService.playNarration('end_of_day', 'overwrite');
+            audioService.setAtmosphere('Evening');
             this.updateUI()}
         ));
         this.unsubs.push(subscribeSelector(s => s.myVoteTargetUUID, () => this.updateUI()));
