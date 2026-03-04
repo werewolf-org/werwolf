@@ -1,6 +1,6 @@
 import { GameStore } from "../store/game.store.js";
 import { type Game, type Player } from "../models.js";
-import { Role, ROLES } from '@shared/roles.js';
+import { Role, ROLES, Team } from '@shared/roles.js';
 import { Phase } from "@shared/phases.js";
 import { v4 as uuidv4 } from 'uuid';
 import { socketService } from "../socket.service.js";
@@ -51,7 +51,7 @@ export class GameManager {
             displayName: p.displayName,
             isSheriff: p.playerUUID === game.sheriffUUID,
             isAlive: p.isAlive,
-            role: p.isAlive ? null : p.role
+            role: (game.phase === Phase.GAME_OVER || !p.isAlive) ? p.role : null
         }));
 
         const localStatePatch: object = {
@@ -61,6 +61,8 @@ export class GameManager {
             activeNightRole: game.activeNightRole,
             players: localPlayerList,
             lynchDone: game.lynchDone,
+            sheriffElectionDone: game.sheriffElectionDone,
+            winningTeam: game.winningTeam,
 
             displayName: player.displayName,
             isManager: player.playerUUID === game.managerUUID,
@@ -111,8 +113,10 @@ export class GameManager {
             phase: Phase.LOBBY,
             activeNightRole: null,
             sheriffUUID: null,
+            sheriffElectionDone: false,
             lynchDone: false,
             lastVotedOutUUID: null,
+            winningTeam: "",
         }
 
         socketService.notifyGameCreated(socketId, gameId);
@@ -243,6 +247,7 @@ export class GameManager {
         game.activeNightRole = this.getFirstToWakeUp(game);
         if(!game.activeNightRole) throw new Error(`Game ${game.gameId} does not have an active night role (${game.activeNightRole}), although the game started!`);
         console.log(`Game ${gameId} started...`)
+        this.isGameOver(gameId);
         this.broadcastSyncState(gameId);
         this.store.updateGame(game);
     }
@@ -289,15 +294,18 @@ export class GameManager {
         const player = this.getPlayerFromNight(game, socketId, role);
 
         handler(game, player, ...handlerArgs);
+        this.isGameOver(gameId);
         this.broadcastSyncState(gameId);
         this.store.updateGame(game);
     }
 
+    // both for sheriff election and lynch voting
     vote(gameId: string, socketId: string, targetUUID: string): void {
         const game = this.store.getGame(gameId);
         if(!game) throw new Error(`Game with ID ${gameId} not found!`)
-        if(game.phase !== Phase.DAY) throw new Error(`Game with ID ${gameId} is not in Phase DAY, so voting cannot happen right now`);
-        if(game.lynchDone) throw new Error(`Cannot vote in Game ${game.gameId} since lynch is already done!`);
+        if(game.phase !== Phase.DAY && game.phase !== Phase.SHERIFF_ELECTION) throw new Error(`Game with ID ${gameId} is not in Phase DAY or in Phase SHERIFF_ELECTION, so voting cannot happen right now`);
+        if(game.phase === Phase.DAY && game.lynchDone) throw new Error(`Cannot vote in Game ${game.gameId} since lynch is already done!`);
+        if(game.phase === Phase.SHERIFF_ELECTION && game.sheriffElectionDone) throw new Error(`Cannot vote sheriff in Game ${game.gameId} since sheriff voting is already done!`);
         
         const player = game.players.find((player) => player.socketId === socketId);
         if(!player) throw new Error(`Player with socketId ${socketId} not found in ${gameId}`);
@@ -306,14 +314,17 @@ export class GameManager {
         player.voteTargetUUID = targetUUID;
 
         const everyoneVoted: boolean = this.checkIfEveryoneVoted(game);
-        if(everyoneVoted) this.resolveVoting(game);
+        if (everyoneVoted) {
+            if(game.phase === Phase.DAY) this.resolveVoting(game);
+            else if (game.phase === Phase.SHERIFF_ELECTION) this.resolveSheriffVoting(game);
+        }
 
         this.broadcastSyncState(gameId);
         this.store.updateGame(game);
     }
 
     private checkIfEveryoneVoted(game: Game): boolean {
-        if(game.phase !== Phase.DAY) throw new Error(`Game with ID ${game.gameId} is not in Phase DAY, so voting cannot happen right now`)
+        if(game.phase !== Phase.DAY && game.phase !== Phase.SHERIFF_ELECTION) throw new Error(`Game with ID ${game.gameId} is not in Phase DAY or SHERIFF_ELECTION, so voting cannot happen right now`)
 
         const alivePlayers = game.players.filter((player) => player.isAlive)
         const playersWhoVotes = alivePlayers.filter((player) => player.voteTargetUUID !== null);
@@ -321,7 +332,7 @@ export class GameManager {
     }
 
     private getVoteResults(game: Game): Record<string, string | null> | null {
-        if(game.phase !== Phase.DAY) return null;
+        if(game.phase !== Phase.DAY && game.phase != Phase.SHERIFF_ELECTION) return null;
         return Object.fromEntries(
             game.players
                 .filter(p => p.playerUUID !== null)
@@ -329,7 +340,7 @@ export class GameManager {
         );
     }
 
-    private getVotedOut(game: Game): Player | null {
+    private getMostVotedPlayer(game: Game): Player | null {
         const votes: Record<string, number> = {}
         const alivePlayers = game.players.filter((player) => player.isAlive)
         if(alivePlayers.length === 0) return null;
@@ -356,19 +367,51 @@ export class GameManager {
     }
     
     private resolveVoting(game: Game): void {
-        if(game.phase !== Phase.DAY) throw new Error(`Game with ID ${game.gameId} is not in Phase DAY, so voting cannot happen right now`);
         if(!game.players.find((player) => player.voteTargetUUID)) throw new Error(`Not all players in Game ${game.gameId} have voted!`);
-
-        const electedPlayer = this.getVotedOut(game); 
+        const electedPlayer = this.getMostVotedPlayer(game); 
         if(electedPlayer) {
             electedPlayer.isAlive = false;
             checkCoupleDying(game, electedPlayer.playerUUID);
         }
-
         // reset votes
         game.lynchDone = true;
         game.lastVotedOutUUID = electedPlayer?.playerUUID ?? null;
+        this.isGameOver(game.gameId);
         console.log(`Voting Resolved in Game ${game.gameId}. Player voted out: ${electedPlayer?.playerUUID}`)
+    }
+
+    private resolveSheriffVoting(game: Game): void {
+        if(!game.players.find((player) => player.voteTargetUUID)) throw new Error(`Not all players in Game ${game.gameId} have voted!`);
+        const electedPlayer = this.getMostVotedPlayer(game); 
+        if(electedPlayer) game.sheriffUUID = electedPlayer.playerUUID;
+        game.sheriffElectionDone = true;
+        console.log(`Sheriff Voting Resolved in Game ${game.gameId}. New sheriff: ${electedPlayer?.playerUUID}`)
+    }
+
+    acceptSheriffRole(gameId: string, socketId: string) {
+        const game = this.store.getGame(gameId);
+        if (!game) throw new Error(`Game with ID ${gameId} not found!`);
+        if(game.phase !== Phase.SHERIFF_ELECTION) throw new Error(`Game ${game.gameId} is not in SHERIFF_ELECTION phase.`);
+        const player = game.players.find((p) => p.socketId === socketId);
+        if(!player) throw new Error(`Player with socketId ${socketId} not found.`);
+        if(player.playerUUID !== game.sheriffUUID) throw new Error(`Player is not the elected sheriff.`);
+
+        game.phase = Phase.DAY;
+        game.players.forEach((p) => p.voteTargetUUID = null);
+        this.broadcastSyncState(gameId);
+        this.store.updateGame(game);
+    }
+
+    gmContinueToDay(gameId: string, socketId: string) {
+        const game = this.store.getGame(gameId);
+        if (!game) throw new Error(`Game with ID ${gameId} not found!`);
+        if(game.phase !== Phase.SHERIFF_ELECTION) throw new Error(`Game ${game.gameId} is not in SHERIFF_ELECTION phase.`);
+        if(socketId !== game.players.find(p => p.playerUUID === game.managerUUID)?.socketId) throw new Error("Only GM can skip to day.");
+
+        game.phase = Phase.DAY;
+        game.players.forEach((p) => p.voteTargetUUID = null);
+        this.broadcastSyncState(gameId);
+        this.store.updateGame(game);
     }
 
     readyForNight(gameId: string, socketId: string) {
@@ -394,6 +437,34 @@ export class GameManager {
         }
         this.broadcastSyncState(gameId);
         this.store.updateGame(game);
+    }
+
+    // TODO: make end of game logic more elaborate (e.g. if 3 werewolves + 1 villager => village cannot win)
+    isGameOver(gameId: string) {
+        const game = this.store.getGame(gameId);
+        if (!game) throw new Error(`Game with ID ${gameId} not found!`);
+        const alivePlayers = game.players.filter((player) => player.isAlive);
+        if(alivePlayers.length === 0) { // no more players alive
+            game.phase = Phase.GAME_OVER;
+            game.winningTeam = null;
+        }
+        // OPTION 1: only werewolves are alive
+        const isWerewolf = (player: Player) => player.role == Role.WEREWOLF;
+        if(alivePlayers.every(isWerewolf)) {
+            game.phase = Phase.GAME_OVER;
+            game.winningTeam = 'werewolves'; // only werewolves alive
+        }
+        // OPTION 2: all werewolves are dead
+        if(!alivePlayers.some(isWerewolf)) {
+            game.phase = Phase.GAME_OVER;
+            game.winningTeam = 'village'; // all werewolves are dead
+        }
+        // OPTION 3: only the loving pair is alive
+        const isInLove = (player: Player) => player.lovePartner != null;
+        if(alivePlayers.length === 2 && alivePlayers.every(isInLove)) {
+            game.phase = Phase.GAME_OVER;
+            game.winningTeam = 'couple'; // only couple lives
+        }
     }
 
 }

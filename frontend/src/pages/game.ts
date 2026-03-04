@@ -9,6 +9,8 @@ import { socketService } from '../socket.service';
 import { RoleDistributionPhase } from './phases/role-distribution';
 import { NightPhase } from './phases/night';
 import { DayPhase } from './phases/day';
+import { SheriffElectionPhase } from './phases/sheriff-election';
+import { GameOverPhase } from './phases/game-over';
 import { ROLES, Role } from '@shared/roles.js';
 
 export class GamePage extends View {
@@ -41,12 +43,12 @@ export class GamePage extends View {
 
         console.log(`GamePage mounted for ${this.gameId}`);
 
-        this.unsubs.push(subscribeSelector(s => s.phase, (phase) => {
+        subscribeSelector(this, s => s.phase, (phase) => {
             if (phase) this.renderPhase(phase);
-        }));
+        });
 
         // Global death tracking
-        this.unsubs.push(subscribeSelector(s => s.players, (players) => {
+        subscribeSelector(this, s => s.players, (players) => {
             if (players.length === 0) return;
 
             // On first sync after join/rejoin, just mark currently dead players as "known"
@@ -59,7 +61,7 @@ export class GamePage extends View {
             }
 
             this.checkForNewDeaths(players);
-        }));
+        });
 
         // Setup close button for global popup
         const closeBtn = document.getElementById('close-death-popup');
@@ -109,8 +111,8 @@ export class GamePage extends View {
     private renderPhase(phase: Phase): void {
         if (!this.phaseContainer) return;
 
-        // Safety: Ensure Dark Mode if not in Day Phase
-        if (phase !== Phase.DAY) {
+        // Safety: Ensure Dark Mode if not in Day Phase or Sheriff Election
+        if (phase !== Phase.DAY && phase !== Phase.SHERIFF_ELECTION) {
             document.body.classList.remove('light-mode');
         }
 
@@ -132,8 +134,14 @@ export class GamePage extends View {
             case Phase.NIGHT:
                 this.currentPhaseView = new NightPhase();
                 break;
+            case Phase.SHERIFF_ELECTION:
+                this.currentPhaseView = new SheriffElectionPhase();
+                break;
             case Phase.DAY:
                 this.currentPhaseView = new DayPhase();
+                break;
+            case Phase.GAME_OVER:
+                this.currentPhaseView = new GameOverPhase();
                 break;
             default:
                 this.currentPhaseView = new PlaceholderPhase(phase);

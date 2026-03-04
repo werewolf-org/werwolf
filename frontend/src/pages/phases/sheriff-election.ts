@@ -1,30 +1,21 @@
 import { View } from '../../base-view';
-import dayHtml from './day.html?raw';
+import sheriffElectionHtml from './sheriff-election.html?raw';
 import { getState, subscribeSelector } from '../../store';
 import { socketService } from '../../socket.service';
-import { audioService } from '../../audio.service';
 
-export class DayPhase extends View {
+export class SheriffElectionPhase extends View {
     private selectedTargetUUID: string | null = null;
 
     mount(container: HTMLElement): void {
         this.container = container;
-        this.container.innerHTML = dayHtml;
+        this.container.innerHTML = sheriffElectionHtml;
 
-        audioService.playNarration('morning', 'overwrite');
-        audioService.setAtmosphere('Village');
-
-        // Switch to Light Mode for Day
+        // Switch to Light Mode for Election (Daylight feel)
         document.body.classList.add('light-mode');
 
         // Reactive Subscriptions
-        subscribeSelector(this, s => s.lynchDone, () => {
-            audioService.playNarration('end_of_day', 'overwrite');
-            audioService.setAtmosphere('Evening');
-            this.updateUI()}
-        );
+        subscribeSelector(this, s => s.sheriffElectionDone, () => this.updateUI());
         subscribeSelector(this, s => s.myVoteTargetUUID, () => this.updateUI());
-        subscribeSelector(this, s => s.readyForNight, () => this.updateUI());
         subscribeSelector(this, s => s.players, () => this.updateUI());
 
         this.setupEventListeners();
@@ -34,7 +25,7 @@ export class DayPhase extends View {
     }
 
     private setupEventListeners() {
-        const confirmBtn = document.getElementById('confirm-vote-btn');
+        const confirmBtn = document.getElementById('confirm-sheriff-vote-btn');
         if (confirmBtn) {
             confirmBtn.addEventListener('click', () => {
                 if (this.selectedTargetUUID) {
@@ -43,26 +34,31 @@ export class DayPhase extends View {
             });
         }
 
-        const readyBtn = document.getElementById('ready-for-night-btn');
-        if (readyBtn) {
-            readyBtn.addEventListener('click', () => {
-                socketService.readyForNight();
+        const acceptBtn = document.getElementById('accept-sheriff-btn');
+        if (acceptBtn) {
+            acceptBtn.addEventListener('click', () => {
+                socketService.acceptSheriffRole();
+            });
+        }
+
+        const gmContinueBtn = document.getElementById('gm-continue-btn');
+        if (gmContinueBtn) {
+            gmContinueBtn.addEventListener('click', () => {
+                socketService.gmContinueToDay();
             });
         }
     }
 
     private updateUI() {
         const state = getState();
-        const votingView = document.getElementById('day-voting-view');
-        const resultView = document.getElementById('day-result-view');
+        const votingView = document.getElementById('sheriff-voting-view');
+        const resultView = document.getElementById('sheriff-result-view');
 
-        if (state.lynchDone) {
-            // STATE: RESULTS
+        if (state.sheriffElectionDone) {
             if (votingView) votingView.style.display = 'none';
             if (resultView) resultView.style.display = 'block';
             this.renderResultView();
         } else {
-            // STATE: VOTING
             if (votingView) votingView.style.display = 'block';
             if (resultView) resultView.style.display = 'none';
             this.renderVotingView();
@@ -75,22 +71,21 @@ export class DayPhase extends View {
         const isDead = me && !me.isAlive;
         const hasVoted = !!state.myVoteTargetUUID;
 
-        const controls = document.getElementById('day-voting-controls');
-        const waitingMsg = document.getElementById('vote-confirmed-message');
-        const listEl = document.getElementById('day-vote-list');
+        const controls = document.getElementById('sheriff-voting-controls');
+        const waitingMsg = document.getElementById('sheriff-vote-confirmed-message');
+        const listEl = document.getElementById('sheriff-vote-list');
 
         if (isDead) {
             if (controls) controls.style.display = 'none';
             if (waitingMsg) {
                 waitingMsg.style.display = 'block';
-                waitingMsg.innerHTML = '<p class="fog-text">The dead cannot vote. Observe the village...</p>';
+                waitingMsg.innerHTML = '<p class="fog-text">The dead have no voice in the election.</p>';
             }
             if (listEl) listEl.style.pointerEvents = 'none';
         } else if (hasVoted) {
             if (controls) controls.style.display = 'none';
             if (waitingMsg) {
                 waitingMsg.style.display = 'block';
-                waitingMsg.innerHTML = '<p class="fog-text">Vote Cast. Waiting for others...</p>';
             }
             if (listEl) {
                 listEl.style.pointerEvents = 'none';
@@ -111,23 +106,34 @@ export class DayPhase extends View {
     private renderResultView() {
         const state = getState();
         const me = state.players.find(p => p.playerUUID === state.playerUUID);
-        const isDead = me && !me.isAlive;
-        const isReady = state.readyForNight;
+        const isSheriff = me?.isSheriff ?? false;
+        const isManager = state.isManager;
+        const anySheriff = state.players.some(p => p.isSheriff);
 
-        const controls = document.getElementById('day-result-controls');
-        const waitingMsg = document.getElementById('night-waiting-message');
+        const acceptControls = document.getElementById('sheriff-accept-controls');
+        const gmContinueControls = document.getElementById('gm-continue-controls');
+        const waitingMsg = document.getElementById('sheriff-waiting-message');
+        const noSheriffMsg = document.getElementById('no-sheriff-waiting-message');
 
-        if (isDead) {
-            if (controls) controls.style.display = 'none';
-            if (waitingMsg) {
-                waitingMsg.style.display = 'block';
-                waitingMsg.innerHTML = '<p class="fog-text">The dead have no say in the coming night. Waiting for the living...</p>';
+        if (anySheriff) {
+            if (isSheriff) {
+                if (acceptControls) acceptControls.style.display = 'block';
+                if (gmContinueControls) gmContinueControls.style.display = 'none';
+                if (waitingMsg) waitingMsg.style.display = 'none';
+            } else {
+                if (acceptControls) acceptControls.style.display = 'none';
+                if (gmContinueControls) gmContinueControls.style.display = 'none';
+                if (waitingMsg) waitingMsg.style.display = 'block';
             }
-        } else if (isReady) {
-            if (controls) controls.style.display = 'none';
-            if (waitingMsg) waitingMsg.style.display = 'block';
+            if (noSheriffMsg) noSheriffMsg.style.display = 'none';
         } else {
-            if (controls) controls.style.display = 'block';
+            // No sheriff elected
+            if (isManager) {
+                if (gmContinueControls) gmContinueControls.style.display = 'block';
+            } else {
+                if (noSheriffMsg) noSheriffMsg.style.display = 'block';
+            }
+            if (acceptControls) acceptControls.style.display = 'none';
             if (waitingMsg) waitingMsg.style.display = 'none';
         }
 
@@ -146,7 +152,6 @@ export class DayPhase extends View {
                     <span class="player-dot alive"></span>
                     <span class="player-name">
                         ${p.displayName || 'Unnamed Player'}${isMe ? ' (You)' : ''}
-                        ${p.isSheriff ? '<span class="sheriff-badge" title="Sheriff">🎖️</span>' : ''}
                     </span>
                 </li>
             `;
@@ -162,7 +167,7 @@ export class DayPhase extends View {
                 item.classList.add('selected');
                 this.selectedTargetUUID = item.getAttribute('data-uuid');
                 
-                const confirmBtn = document.getElementById('confirm-vote-btn') as HTMLButtonElement;
+                const confirmBtn = document.getElementById('confirm-sheriff-vote-btn') as HTMLButtonElement;
                 if (confirmBtn) confirmBtn.disabled = false;
             });
         });
@@ -171,25 +176,24 @@ export class DayPhase extends View {
     private renderResultData() {
         const state = getState();
         const votes = state.voteResults;
-        const lynchedUUID = state.votedOutUUID;
         const players = state.players;
+        const sheriff = players.find(p => p.isSheriff);
 
-        const lynchedNameEl = document.getElementById('lynched-player-name');
-        const lynchTextEl = document.getElementById('lynch-result-text');
+        const electedNameEl = document.getElementById('elected-sheriff-name');
+        const electionTextEl = document.getElementById('sheriff-election-text');
+        const noSheriffTextEl = document.getElementById('no-sheriff-text');
         
-        if (lynchedUUID) {
-            const victim = players.find(p => p.playerUUID === lynchedUUID);
-            if (lynchedNameEl) lynchedNameEl.innerText = victim?.displayName || 'Unnamed Player';
-            if (lynchTextEl) lynchTextEl.innerText = '...was sent to the gallows.';
+        if (sheriff) {
+            if (electedNameEl) electedNameEl.innerText = sheriff.displayName || 'Unnamed Player';
+            if (electionTextEl) electionTextEl.style.display = 'block';
+            if (noSheriffTextEl) noSheriffTextEl.style.display = 'none';
         } else {
-            if (lynchedNameEl) {
-                lynchedNameEl.innerText = "No One";
-                lynchedNameEl.style.color = 'var(--text-main)';
-            }
-            if (lynchTextEl) lynchTextEl.innerText = '...was harmed this day.';
+            if (electedNameEl) electedNameEl.innerText = "No One";
+            if (electionTextEl) electionTextEl.style.display = 'none';
+            if (noSheriffTextEl) noSheriffTextEl.style.display = 'block';
         }
 
-        const breakdownEl = document.getElementById('day-vote-breakdown');
+        const breakdownEl = document.getElementById('sheriff-vote-breakdown');
         if (!breakdownEl || !votes) return;
 
         const votesByTarget: Record<string, string[]> = {};
@@ -197,7 +201,7 @@ export class DayPhase extends View {
             if (!targetUUID) return;
             if (!votesByTarget[targetUUID]) votesByTarget[targetUUID] = [];
             const voter = players.find(p => p.playerUUID === voterUUID);
-            const name = (voter?.isSheriff ? '🎖️ ' : '') + (voter?.displayName || 'Unnamed Player');
+            const name = voter?.displayName || 'Unnamed Player';
             votesByTarget[targetUUID].push(name);
         });
 
@@ -205,13 +209,13 @@ export class DayPhase extends View {
 
         breakdownEl.innerHTML = sortedTargets.map(([targetUUID, voterNames]) => {
             const target = players.find(p => p.playerUUID === targetUUID);
-            const targetName = (target?.isSheriff ? '🎖️ ' : '') + (target?.displayName || 'Unnamed Player');
-            const isDead = targetUUID === lynchedUUID;
+            const targetName = target?.displayName || 'Unnamed Player';
+            const isWinner = targetUUID === sheriff?.playerUUID;
 
             return `
                 <li class="pixel-list-item" style="flex-direction: column; align-items: flex-start;">
                     <div style="width: 100%; display: flex; justify-content: space-between;">
-                        <span style="${isDead ? 'color: var(--accent); text-decoration: line-through;' : ''}">
+                        <span style="${isWinner ? 'color: var(--highlight); font-weight: bold;' : ''}">
                             ${targetName}
                         </span>
                         <span class="highlight-text">${voterNames.length} Votes</span>
