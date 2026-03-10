@@ -44,9 +44,9 @@ class SocketService {
         this.socket?.emit('joinGame', { gameId, playerUUID });
     }
 
-    public changeName(playerUUID: string, playerName: string) {
+    public changeName(playerName: string) {
         const gameId = getState().gameId;
-        this.socket?.emit('changeName', { gameId, playerUUID, playerName });
+        this.socket?.emit('changeName', { gameId, playerName });
     }
 
     public closeJoining() {
@@ -54,14 +54,19 @@ class SocketService {
         this.socket?.emit('closeJoining', { gameId });
     }
 
-    public startDistribution(roles: Record<string, number>) {
+    public roleDistribution(roles: Record<string, number>) {
         const gameId = getState().gameId;
-        this.socket?.emit('startDistribution', { gameId, roles });
+        this.socket?.emit('roleDistribution', { gameId, roles });
     }
 
     public startGame() {
         const gameId = getState().gameId;
         this.socket?.emit('startGame', { gameId });
+    }
+
+    public nominate(nominationUUID: string | false) {
+        const gameId = getState().gameId;
+        this.socket?.emit('nominate', { gameId, nominationUUID });
     }
 
     public vote(voteTargetUUID: string) {
@@ -77,11 +82,6 @@ class SocketService {
     public acceptSheriffRole() {
         const gameId = getState().gameId;
         this.socket?.emit('acceptSheriffRole', { gameId });
-    }
-
-    public gmContinueToDay() {
-        const gameId = getState().gameId;
-        this.socket?.emit('gmContinueToDay', { gameId });
     }
 
     // Role specific emits
